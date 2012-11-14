@@ -10,11 +10,28 @@
  * @license   GNU/LGPL 
  * @copyright netzmacht creative 2012 
  */
+ 
 
-$GLOBALS['cloudApi']['apis']['dropbox'] = array(
+
+/**
+ * register dropbox api. It is nessesary to load localconfig.php at this place
+ * because of accessing enable value and Contao 3 changes only loading localconfig at the end.
+ */
+require TL_ROOT . '/system/config/localconfig.php';
+Netzmacht\Cloud\Api\CloudApiManager::registerApi('dropbox', array(
     'name' => 'Netzmacht\Cloud\Dropbox\DropboxApi',
-    'enabled' => &$GLOBALS['TL_CONFIG']['enableDropbox'] // name of tl config to enable dropbox api
-);
+    'enabled' => &$GLOBALS['TL_CONFIG']['enableDropbox']
+));
+
+
+/**
+ * Set default dropbox app. It is possible to change this in the settings.
+ * Usefull if you have to use dropbox in a sandbox
+ */
+$GLOBALS['TL_CONFIG']['dropboxRoot'] = 'dropbox';
+$GLOBALS['TL_CONFIG']['dropboxCustomerKey'] = 'asc7atgjdcbjqgk';
+$GLOBALS['TL_CONFIG']['dropboxCustomerSecret'] = 'omqgys456jno5ns';
+
 
 /**
  * BACK END MODULES

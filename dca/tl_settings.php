@@ -26,13 +26,15 @@
 
 
 $GLOBALS['TL_DCA']['tl_settings']['palettes']['__selector__'][] = 'enableDropbox';
+$GLOBALS['TL_DCA']['tl_settings']['palettes']['__selector__'][] = 'dropboxCustomApp';
 $GLOBALS['TL_DCA']['tl_settings']['palettes']['default'] = str_replace(
     '{cloudapi_legend}', 
     '{cloudapi_legend},enableDropbox', 
     $GLOBALS['TL_DCA']['tl_settings']['palettes']['default']
 );    
 
-$GLOBALS['TL_DCA']['tl_settings']['subpalettes']['enableDropbox'] = 'dropboxCustomerKey,dropboxCustomerSecret,dropboxRoot,dropboxOauth,dropboxAccessToken';
+$GLOBALS['TL_DCA']['tl_settings']['subpalettes']['enableDropbox'] = 'dropboxOauth,dropboxAccessToken,dropboxCustomApp';
+$GLOBALS['TL_DCA']['tl_settings']['subpalettes']['dropboxCustomApp'] = 'dropboxCustomerKey,dropboxCustomerSecret,dropboxRoot';
 
 
 $GLOBALS['TL_DCA']['tl_settings']['fields']['enableDropbox'] = array
@@ -40,6 +42,13 @@ $GLOBALS['TL_DCA']['tl_settings']['fields']['enableDropbox'] = array
     'label'                   => &$GLOBALS['TL_LANG']['tl_settings']['enableDropbox'],
     'inputType'               => 'checkbox',
     'eval'                    => array('submitOnChange'=>true)
+);
+
+$GLOBALS['TL_DCA']['tl_settings']['fields']['dropboxCustomApp'] = array
+(
+    'label'                   => &$GLOBALS['TL_LANG']['tl_settings']['dropboxCustomApp'],
+    'inputType'               => 'checkbox',
+    'eval'                    => array('submitOnChange'=>true, 'tl_class' => 'clr')
 );
 
 $GLOBALS['TL_DCA']['tl_settings']['fields']['dropboxCustomerKey'] = array
@@ -60,8 +69,8 @@ $GLOBALS['TL_DCA']['tl_settings']['fields']['dropboxRoot'] = array
 (
     'label'                   => &$GLOBALS['TL_LANG']['tl_settings']['dropboxRoot'],
     'inputType'               => 'select',
-    'options'                 => array('dropbox', 'sandbox'),    
-    'eval'                    => array('mandatory'=>true, 'nospace'=>'true', 'tl_class'=>'w50')
+    'options'                 => array('dropbox', 'sandbox'),
+    'eval'                    => array('mandatory'=>true, 'tl_class'=>'w50')
 );
 
 $GLOBALS['TL_DCA']['tl_settings']['fields']['dropboxOauth'] = array
