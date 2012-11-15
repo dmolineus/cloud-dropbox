@@ -207,6 +207,10 @@ class DropboxNode extends Api\CloudNode
         $this->arrChildren = array();
         
         if(!is_array($this->children)) {
+            // children were not loaded before so force loading them
+            if(!$this->childrenLoaded) {
+                $this->getMetaData(true);
+            }
             return $this->arrChildren;
         }
         
@@ -245,7 +249,7 @@ class DropboxNode extends Api\CloudNode
      */
     protected function getMetaData($blnLoadChildren = null)
     {
-        if($this->blnMetaDataLoaded == true) {
+        if(($this->blnMetaDataLoaded == true && $blnLoadChildren == null ) || ($blnLoadChildren == true && $this->childrenLoaded)) {
             return;
         } 
         
@@ -359,7 +363,10 @@ class DropboxNode extends Api\CloudNode
         if(!$blnMatchKeys) {
             $this->arrCache = $arrMetaData;
             return;
-        }        
+        }
+        
+        // set default value
+        $this->arrCache['childrenLoaded'] = false;
         
         // match keys because meta data is in dropbox style
         foreach ($arrMetaData as $strKey => $mxdValue) {
@@ -373,8 +380,19 @@ class DropboxNode extends Api\CloudNode
                     $this->arrCache['size'] = $mxdValue;
                     break;
                     
-                case 'contents':
+                case 'children':
                     $this->arrCache['children'] = $mxdValue;
+                    $this->arrCache['childrenLoaded'] = true;
+                    break;
+                    
+                case 'contents':
+                    foreach($mxdValue as $arrChild) {
+                        $objChild = $this->objApi->getNode($arrChild['path'], false, $arrChild);
+                        
+                        $this->arrChildren[$arrChild['path']] =  $objChild;
+                        $this->arrCache['children'][] = $arrChild['path'];
+                    }   
+                    $this->arrCache['childrenLoaded'] = true;
                     break;
                 
                 case 'rev':
@@ -386,9 +404,7 @@ class DropboxNode extends Api\CloudNode
                     break;                   
                                     
                 case 'cacheKey':
-                case 'cacheMetaKey':
-                case 'children':
-                case 'childrenLoaded':
+                case 'cacheMetaKey':                
                 case 'extension':
                 case 'hash':
                 case 'hasThumbnail':
