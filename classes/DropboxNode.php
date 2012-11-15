@@ -35,6 +35,11 @@ class DropboxNode extends Api\CloudNode
     /**
      * 
      */
+    protected $blnMetaDataChanged = false;
+    
+    /**
+     * 
+     */
     protected $objConnection;
     
         
@@ -52,24 +57,34 @@ class DropboxNode extends Api\CloudNode
         $this->objConnection = $objApi->getConnection();
         
         // set meta data
-        if(is_array($arrMetaData)) {
+        if(is_array($arrMetaData)) 
+        {
             $this->setMetaData($arrMetaData, true);
-            //$this->hasChanged();
             return;
         }
 
-        if(!$this->isMetaCached) {
+        if(!$this->isMetaCached) 
+        {            
             $this->getMetaData();
             return;
         }
         
+        
         // load cached file informations
-        $arrCache = unserialize(Api\CloudCache::get($this->cacheMetaKey));
-        $this->arrCache = $arrCache;
-        //$this->hasChanged();
+        $arrCache = unserialize(Api\CloudCache::get($this->cacheMetaKey));        
+        $this->arrCache = $arrCache;        
+        $this->updateCache();
         
         $this->blnMetaDataLoaded = true;        
         return;
+    }
+    
+    /**
+     * destructor
+     */
+    public function __destruct()
+    {
+        $this->cacheMetaFile();
     }
     
         
@@ -79,14 +94,16 @@ class DropboxNode extends Api\CloudNode
      * @return mixed
      */
     public function __get($strKey)
-    {
-        if(isset($this->arrCache[$strKey])) {
-            $this->arrCache[$strKey];
+    {       
+        if(isset($this->arrCache[$strKey])) 
+        {
+            return $this->arrCache[$strKey];
         }
         
-        switch ($strKey) {
+        switch ($strKey)
+        {
             case 'cacheKey':
-                $this->arrCache[$strKey] = sprintf('/%s/%s',
+                $this->arrCache[$strKey] = sprintf('/%s%s',
                     DropboxApi::DROPBOX,
                     $this->strPath
                 );                 
@@ -94,7 +111,7 @@ class DropboxNode extends Api\CloudNode
                 
             case 'cacheMetaKey':
                 $objApi = Api\CloudApiManager::getApi(DropboxApi::DROPBOX);
-                $this->arrCache[$strKey] = sprintf('/%s/%s.meta',
+                $this->arrCache[$strKey] = sprintf('/%s%s.meta',
                     DropboxApi::DROPBOX,
                     $this->strPath
                 );                 
@@ -104,7 +121,7 @@ class DropboxNode extends Api\CloudNode
                 $arrPathInfo = pathinfo($this->strPath);
                 
                 $this->arrCache[$strKey] = sprintf(
-                    '%s/%s/%s_large.%s.jpg', 
+                    '%s/%s/%s_thumb.%s.jpg', 
                     DropboxApi::DROPBOX, 
                     $arrPathInfo['dirname'], 
                     $arrPathInfo['filename'], 
@@ -150,17 +167,41 @@ class DropboxNode extends Api\CloudNode
             case 'modified':
             case 'path':
             case 'root':
-            case 'size':            
+            case 'fileSize':            
             case 'version':            
                 $this->getMetaData();
                 break;                   
         }
         
         // some meta data aren't created always so check if cache exists
-        if(!isset($this->arrCache[$strKey])) {
+        if(!isset($this->arrCache[$strKey])) 
+        {
             return null;
         }        
         return $this->arrCache[$strKey];
+    }
+
+
+    /**
+     * save attributes
+     * 
+     * @param string
+     * @param mixed
+     */
+    public function __set($strKey, $mxdValue)
+    {
+        switch ($strKey) 
+        {
+            case 'thumbnailVersion':
+                $this->arrCache[$strKey] = $mxdValue;
+                break;
+                
+            case 'default':
+                return;
+                break;
+        }
+        
+        $this->blnMetaDataChanged = true;
     }
 
     /**
@@ -168,19 +209,26 @@ class DropboxNode extends Api\CloudNode
      */
     protected function cacheMetaFile()
     {
+        if(!$this->blnMetaDataChanged) {
+            return; 
+        }
+        
         // do not cache isCached and isMetaCached in files
         $arrCache = $this->arrCache;
         
-        if(isset($arrCache['isCached'])) {
+        if(isset($arrCache['isCached'])) 
+        {
             unset($arrCache['isCached']);
         
         }
         
-        if(isset($arrCache['isMetaCached'])) {
+        if(isset($arrCache['isMetaCached'])) 
+        {
             unset($arrCache['isMetaCached']);
         }
         
-        if(isset($arrCache['downloadUrl'])) {
+        if(isset($arrCache['downloadUrl'])) 
+        {
             unset($arrCache['downloadUrl']);
         }
         
@@ -200,7 +248,8 @@ class DropboxNode extends Api\CloudNode
     {
         $this->objConnection->copy($this->strPath, $strNewPath);
         
-        if($blnReturnNode) {         
+        if($blnReturnNode) 
+        {         
             return $this->objApi->getNode($strNewPath);
         }    
     }
@@ -224,21 +273,26 @@ class DropboxNode extends Api\CloudNode
      */
     public function getChildren()
     {
-        if(is_array($this->arrChildren)) {
+        if(is_array($this->arrChildren)) 
+        {
             return $this->arrChildren;
         }
         
         $this->arrChildren = array();
         
-        if(!is_array($this->children)) {
+        if(!is_array($this->children)) 
+        {
             // children were not loaded before so force loading them
-            if(!$this->childrenLoaded) {
+            if(!$this->childrenLoaded) 
+            {
                 $this->getMetaData(true);
             }
+            
             return $this->arrChildren;
         }
         
-        foreach ($this->children as $strChild) {
+        foreach ($this->children as $strChild) 
+        {
             $objChild = $this->objApi->getNode($strChild, false);
             $this->arrChildren[$strChild] = $objChild;            
         }
@@ -255,7 +309,8 @@ class DropboxNode extends Api\CloudNode
     public function getFile()
     {
         // file is cached so not needed to download it again        
-        if(Api\CloudCache::isCached($this->cacheKey)) {
+        if(Api\CloudCache::isCached($this->cacheKey)) 
+        {
             return Api\CloudCache::getFile($this->cacheKey);
         }
         
@@ -273,7 +328,8 @@ class DropboxNode extends Api\CloudNode
      */
     protected function getMetaData($blnLoadChildren = null)
     {
-        if(($this->blnMetaDataLoaded == true && $blnLoadChildren == null ) || ($blnLoadChildren == true && $this->childrenLoaded)) {
+        if(($this->blnMetaDataLoaded == true && $blnLoadChildren == null ) || ($blnLoadChildren == true && $this->childrenLoaded)) 
+        {
             return;
         } 
         
@@ -286,28 +342,37 @@ class DropboxNode extends Api\CloudNode
         $this->arrCache['hasThumbnail'] = $arrMetaData['thumb_exists'];
         $this->arrCache['path'] = $arrMetaData['path'];
         $this->arrCache['root'] = $arrMetaData['root'];
-        $this->arrCache['size'] = $arrMetaData['bytes'];
+        $this->arrCache['fileSize'] = $arrMetaData['bytes'];
         $this->arrCache['childrenLoaded'] = $blnLoadChildren;
         
-        if($arrMetaData['contents']) {
-            foreach($arrMetaData['contents'] as $arrChild) {
-                $objChild = $this->objApi->getNode($arrChild['path'], false, $arrChild);
-                
-                $this->arrChildren[$arrChild['path']] =  $objChild;
+        if($arrMetaData['contents']) 
+        {
+           $this->arrCache['children'] = array();
+                       
+            foreach($arrMetaData['contents'] as $arrChild) 
+            {
+                if(!isset($this->arrChildren[$arrChild['path']])) 
+                {
+                    $objChild = $this->objApi->getNode($arrChild['path'], false, $arrChild);
+                    $this->arrChildren[$arrChild['path']] =  $objChild;
+                }
+                               
                 $this->arrCache['children'][] = $arrChild['path'];
             }             
         }
         
-        if(isset($arrMetaData['rev'])) {
+        if(isset($arrMetaData['rev'])) 
+        {
             $this->arrCache['version'] = $arrMetaData['rev'];
         }
         
-        if(isset($arrMetaData['modified'])) {
+        if(isset($arrMetaData['modified'])) 
+        {
             $this->arrCache['modified'] = $arrMetaData['modified'];
         }
-
-        $this->cacheMetaFile();  
-        $this->blnMetaDataLoaded = true; 
+        
+        $this->blnMetaDataLoaded = true;
+        $this->blnMetaDataChanged = true;        
     }
     
     
@@ -318,67 +383,22 @@ class DropboxNode extends Api\CloudNode
      */
     public function getThumbnail()
     {
-        if(!$this->hasThumbnail) {
+        if(!$this->hasThumbnail) 
+        {
             return false;
         }       
 
-        if (!Api\CloudCache::isCached($this->cacheThumbnailKey)) {
-
+        if (!Api\CloudCache::isCached($this->cacheThumbnailKey)) 
+        {
             $strContent = $this->objConnection->getThumbnail($this->strPath, $strSize);
-            Api\CloudCache::cache($this->cacheThumbnailKey, $strContent);         
+            Api\CloudCache::cache($this->cacheThumbnailKey, $strContent);
+            
+            // store thumbnail version so we can decide if we have to delete it
+            // during updating the cache 
+            $this->thumbnailVersion = $this->version;         
         }
         
         return Api\CloudCache::getPath($this->cacheThumbnailKey);
-    }
-    
-    
-    /**
-     * check if online file has changed since last call
-     * 
-     * @return bool
-     */
-    public function hasChanged()
-    {
-        if($this->blnHasChanged !== null) {
-            return $this->blnHasChanged;
-        }
-        
-        if($this->isDir) {
-            $this->blnHasChanged = !$this->objConnection->getMetadata($this->strPath, false, $this->hash);
-            return $this->blnHasChanged;
-        }
-        
-        // have to check if parent has changed
-        $strParent = dirname($this->strPath);
-        $objParent = $this->objApi->getNode($strParent, false);
-        
-        // parent hash has not changed so child did not changed also
-        if(!$objParent->hasChanged()) {
-            $this->blnHasChanged = false;
-            return $this->blnHasChanged;
-        }        
-        
-        $strOldVersion = $this->version;
-        
-        $this->blnMetaDataLoaded = false;
-        
-        // if file has changed also meta data is reloaded. 
-        // so there will be no need to do it again manually         
-        $this->getMetaData(false);
-        
-        // compare versioins        
-        if($strOldVersion != $this->version) {         
-            $this->blnHasChanged = true;
-            return $this->blnHasChanged;                      
-        }
-        
-        // delete thumbnail so it has to created again            
-        if($this->hasThumbnail) {
-            Api\CloudCache::delete($this->cacheThumbnailKey);
-        }
-        
-        $this->blnHasChanged = false;
-        return $this->blnHasChanged;
     }
     
     
@@ -418,7 +438,8 @@ class DropboxNode extends Api\CloudNode
     public function setMetaData($arrMetaData, $blnMatchKeys=false)
     {
         // simply pass by element
-        if(!$blnMatchKeys) {
+        if(!$blnMatchKeys) 
+        {
             $this->arrCache = $arrMetaData;
             return;
         }
@@ -427,15 +448,17 @@ class DropboxNode extends Api\CloudNode
         $this->arrCache['childrenLoaded'] = false;
         
         // match keys because meta data is in dropbox style
-        foreach ($arrMetaData as $strKey => $mxdValue) {
-            switch($strKey) {
+        foreach ($arrMetaData as $strKey => $mxdValue) 
+        {
+            switch($strKey) 
+            {
                 case 'is_dir':
                     $this->arrCache['isFile'] = !$mxdValue;
                     $this->arrCache['isDir'] = $mxdValue;
                     break;
                     
                 case 'bytes':
-                    $this->arrCache['size'] = $mxdValue;
+                    $this->arrCache['fileSize'] = $mxdValue;
                     break;
                     
                 case 'children':
@@ -444,7 +467,8 @@ class DropboxNode extends Api\CloudNode
                     break;
                     
                 case 'contents':
-                    foreach($mxdValue as $arrChild) {
+                    foreach($mxdValue as $arrChild) 
+                    {
                         $objChild = $this->objApi->getNode($arrChild['path'], false, $arrChild);
                         
                         $this->arrChildren[$arrChild['path']] =  $objChild;
@@ -472,7 +496,7 @@ class DropboxNode extends Api\CloudNode
                 case 'mime':
                 case 'modified':
                 case 'root':
-                case 'size':
+                case 'fileSize':
                 case 'cacheThumbnailKey':
                 case 'version':
                 case 'path':
@@ -481,7 +505,71 @@ class DropboxNode extends Api\CloudNode
             }
         }
 
-        $this->cacheMetaFile();
-        $this->blnMetaDataLoaded = true;   
+        $this->blnMetaDataLoaded = true;
+        $this->blnMetaDataChanged = true;
+    }
+
+    /**
+     * check if online file has changed since last call
+     * 
+     * @return bool
+     */
+    protected function updateCache()
+    {        
+        if($this->blnHasChanged !== null) 
+        {
+            return $this->blnHasChanged;
+        }        
+        
+        // let's check for changes going back to the root directory
+        // this is useful because we do not have to check it for every 
+        // item in a directory. in the best case there will only be one
+        // request to dropbox         
+        if($this->strPath != '/')
+        {            
+            $strParent = dirname($this->strPath);
+            $objParent = $this->objApi->getNode($strParent, false);
+            
+            // if parent has not changed child did it eighter
+            if(!$objParent->updateCache()) 
+            {
+                $this->blnHasChanged = false;
+                return $this->blnHasChanged;                        
+            }                   
+        }    
+        
+        if($this->isDir) 
+        {
+            if($this->objConnection->getMetadata($this->strPath, false, $this->hash) === true) 
+            {
+                $this->blnHasChanged = false;
+            } 
+            else 
+            {
+                $this->blnMetaDataLoaded = false;
+                // this will update the children as well
+                $this->getMetaData(); 
+                $this->blnHasChanged = true;
+            };
+            
+            return $this->blnHasChanged;
+        }
+        
+        // we do not really know if file is changed because updating
+        // parent also updated children. but we've stored the thumbnail version. 
+        // let's delete thumbnail so it has to created again            
+        if($this->hasThumbnail && $this->thumbnailVersion != $this->version) 
+        {
+            Api\CloudCache::delete($this->cacheThumbnailKey);
+            $this->thumbnailVersion = null;
+            $this->blnHasChanged = true;
+        }
+        else {
+            // file has probably not changed because thumb is up to date
+            // if there is no thumbnail we can not say it for sure
+            $this->blnHasChanged = false;
+        }
+        
+        return $this->blnHasChanged;
     }
 }
