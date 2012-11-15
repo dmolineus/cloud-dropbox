@@ -151,12 +151,17 @@ class DropboxApi extends CloudApi
      * @param string $strPath
      * @return void
      */
-	public function getNode($strPath, $blnLoadChildren = true)
+	public function getNode($strPath, $blnLoadChildren = true, $arrMetaData=null)
 	{
-	    return new DropboxNode($strPath, $this->objConnection, $blnLoadChildren);
+	    return new DropboxNode($strPath, $this, $blnLoadChildren, $arrMetaData);
     }
     
     
+    /**
+     * get root path of dropbox
+     * 
+     * @return string
+     */
     public function getRoot()
     {
         return $this->arrConfig['dropboxRoot'];

@@ -39,42 +39,28 @@ class DropboxNode extends Api\CloudNode
      * @param Dropbox_API $objApi
      * @param bool load children
      */
-    public function __construct($strPath, $objApi, $blnLoadChildren)
+    public function __construct($strPath, $objApi, $blnLoadChildren, $arrMetaData=null)
     {
         parent::__construct($strPath, $objApi);
         
         $this->blnLoadChildren = $blnLoadChildren;
         $this->objConnection = $objApi->getConnection();
-                
+        
+        // set meta data
+        if(is_array($arrMetaData)) {
+            $this->setMetaData($arrMetaData, true);
+            return;
+        }
+
         if(!$this->isMetaCached) {
+            $this->getMetaData();
             return;
         }
         
         // load cached file informations
         $arrCache = unserialize(Api\CloudCache::get($this->cacheMetaKey));
-        //$this->hash = $arrCache['hash'];
-        echo var_dump($arrCache);
         $this->arrCache = $arrCache;
         return;
-        
-        // nothing changed so stored cache data can be used
-        if(!$this->hasChanged()) {            
-            $this->arrCache = $arrCache;
-        }
-        else {
-            Api\CloudCache::delete($this->cacheMetaKey);
-        }
-    }
-    
-    /**
-     * store metadata in cache file
-     * 
-     * @return void
-     */
-    public function __destruct()
-    {
-        $strCache = serialize($this->arrCache);
-        Api\CloudCache::cache($this->cacheMetaKey, $strCache);        
     }
     
         
@@ -91,18 +77,16 @@ class DropboxNode extends Api\CloudNode
         
         switch ($strKey) {
             case 'cacheKey':
-                $this->arrCache[$strKey] = sprintf('%s-%s.%s',
+                $this->arrCache[$strKey] = sprintf('/%s/%s',
                     DropboxApi::DROPBOX,
-                    $this->objApi->getRoot(),
                     $this->strPath
                 );                 
                 break;
                 
             case 'cacheMetaKey':
                 $objApi = Api\CloudApiManager::getApi(DropboxApi::DROPBOX);
-                $this->arrCache[$strKey] = sprintf('%s-%s.%s.meta',
+                $this->arrCache[$strKey] = sprintf('/%s/%s.meta',
                     DropboxApi::DROPBOX,
-                    $this->objApi->getRoot(),
                     $this->strPath
                 );                 
                 break;
@@ -156,6 +140,26 @@ class DropboxNode extends Api\CloudNode
         }        
         return $this->arrCache[$strKey];
     }
+
+    /**
+     * cache meta file
+     */
+    protected function cacheMetaFile()
+    {
+        // do not cache isCached and isMetaCached in files
+        $arrCache = $this->arrCache;
+        
+        if(isset($arrCache['isCached'])) {
+            unset($arrCache['isCached']);
+        
+        }
+        
+        if(isset($arrCache['isMetaCached'])) {
+            unset($arrCache['isMetaCached']);
+        }
+        $strCache = serialize($arrCache);
+        Api\CloudCache::cache($this->cacheMetaKey, $strCache);  
+    } 
     
     
     /**
@@ -192,18 +196,7 @@ class DropboxNode extends Api\CloudNode
      * @return array
      */
     public function getChildren()
-    {       
-        if(!is_array($this->arrChildren)) {
-            $this->arrChildren = array();
-            
-            foreach($this->children as $arrChild) {
-                $objChild = $this->objApi->getNode($arrChild['path'], false);
-                $objChild->setMetaData($arrChild, true);
-                
-                $this->arrChildren[$arrChild['path']] =  $objChild;
-            }   
-        }
-        
+    {     
         return $this->arrChildren;
     }
     
@@ -250,10 +243,12 @@ class DropboxNode extends Api\CloudNode
         $this->arrCache['size'] = $arrMetaData['bytes'];
         
         if($arrMetaData['contents']) {
-            $this->arrCache['children'] = $arrMetaData['contents'];   
-        }
-        else {
-            $this->arrCache['children'] = array();
+            foreach($arrMetaData['contents'] as $arrChild) {
+                $objChild = $this->objApi->getNode($arrChild['path'], false, $arrChild);
+                
+                $this->arrChildren[$arrChild['path']] =  $objChild;
+                $this->arrCache['children'][] = $arrChild['path'];
+            }             
         }
         
         if(isset($arrMetaData['rev'])) {
@@ -264,6 +259,7 @@ class DropboxNode extends Api\CloudNode
             $this->arrCache['modified'] = $arrMetaData['modified'];
         }
 
+        $this->cacheMetaFile();  
         $this->blnMetaDataLoaded = true; 
     }
     
@@ -369,16 +365,28 @@ class DropboxNode extends Api\CloudNode
                 case 'thumb_exists':
                     $this->arrCache['hasThumbnail'] = $mxdValue;
                     break;                   
-                    
+                                    
+                case 'cacheKey':
+                case 'cacheMetaKey':
+                case 'children':
+                case 'extension':
                 case 'hash':
+                case 'hasThumbnail':
+                case 'icon':
+                case 'isFile':
+                case 'isDir':
+                case 'mime':
                 case 'modified':
                 case 'root':
+                case 'size':
+                case 'version':
                 case 'path':
                     $this->arrCache[$strKey] = $mxdValue;        
                     break;
             }
         }
 
+        $this->cacheMetaFile();
         $this->blnMetaDataLoaded = true;   
     }
 }
