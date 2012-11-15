@@ -132,6 +132,17 @@ class DropboxApi extends CloudApi
         $this->objOauth->setToken($strToken);
         return $this->objOauth->getAuthorizeUrl();
     }
+    
+    
+    /**
+     * return connection object
+     * 
+     * @return DROPBOX_API
+     */
+    public function getConnection()
+    {
+        return $this->objConnection;
+    }
    
 
     /**

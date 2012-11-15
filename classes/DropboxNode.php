@@ -10,7 +10,7 @@ use Netzmacht\Cloud\Api;
  * @license GNU/LPGL
  */
 class DropboxNode extends Api\CloudNode 
-{
+{  
     /**
      * 
      * @var array
@@ -22,18 +22,24 @@ class DropboxNode extends Api\CloudNode
      */
     protected $blnLoadChildren = false;
     
+    /**
+     * 
+     */
+    protected $objConnection;
     
+        
     /**
      * 
      * @param string $strPath
-     * @param Dropbox_API $objConnection
+     * @param Dropbox_API $objApi
      * @param bool load children
      */
-    public function __construct($strPath, $objConnection, $blnLoadChildren)
+    public function __construct($strPath, $objApi, $blnLoadChildren)
     {
-        parent::__construct($strPath, $objConnection);
+        parent::__construct($strPath, $objApi);
         
         $this->blnLoadChildren = $blnLoadChildren;
+        $this->objConnection = $objApi->getConnection();
                 
         if(!$this->isMetaCached) {
             return;
@@ -326,7 +332,7 @@ class DropboxNode extends Api\CloudNode
     }
     
     /**
-     * set metadata. usefull to import metadata from contents block
+     * set metadata. usefull to import metadata from contents block of parent element
      * 
      * @param array
      * @return void
