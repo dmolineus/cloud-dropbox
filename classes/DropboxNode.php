@@ -39,7 +39,7 @@ class DropboxNode extends Api\CloudNode
      * @param Dropbox_API $objApi
      * @param bool load children
      */
-    public function __construct($strPath, $objApi, $blnLoadChildren, $arrMetaData=null)
+    public function __construct($strPath, $objApi, $blnLoadChildren=true, $arrMetaData=null)
     {
         parent::__construct($strPath, $objApi);
         
@@ -60,6 +60,8 @@ class DropboxNode extends Api\CloudNode
         // load cached file informations
         $arrCache = unserialize(Api\CloudCache::get($this->cacheMetaKey));
         $this->arrCache = $arrCache;
+        $this->blnMetaDataLoaded = true;
+        
         return;
     }
     
@@ -121,10 +123,11 @@ class DropboxNode extends Api\CloudNode
             
             // load metadata if they are not loaded
             case 'children':
+            case 'childrenLoaded':
             case 'isFile':
             case 'isDir':   
             case 'hash': 
-            case 'hasThumbnail':
+            case 'hasThumbnail':            
             case 'modified':
             case 'path':
             case 'root':
@@ -196,7 +199,22 @@ class DropboxNode extends Api\CloudNode
      * @return array
      */
     public function getChildren()
-    {     
+    {
+        if(is_array($this->arrChildren)) {
+            return $this->arrChildren;
+        }
+        
+        $this->arrChildren = array();
+        
+        if(!is_array($this->children)) {
+            return $this->arrChildren;
+        }
+        
+        foreach ($this->children as $strChild) {
+            $objChild = $this->objApi->getNode($strChild, false);
+            $this->arrChildren[$strChild] = $objChild;            
+        }
+        
         return $this->arrChildren;
     }
     
@@ -241,6 +259,7 @@ class DropboxNode extends Api\CloudNode
         $this->arrCache['path'] = $arrMetaData['path'];
         $this->arrCache['root'] = $arrMetaData['root'];
         $this->arrCache['size'] = $arrMetaData['bytes'];
+        $this->arrCache['childrenLoaded'] = $blnLoadChildren;
         
         if($arrMetaData['contents']) {
             foreach($arrMetaData['contents'] as $arrChild) {
@@ -369,6 +388,7 @@ class DropboxNode extends Api\CloudNode
                 case 'cacheKey':
                 case 'cacheMetaKey':
                 case 'children':
+                case 'childrenLoaded':
                 case 'extension':
                 case 'hash':
                 case 'hasThumbnail':
