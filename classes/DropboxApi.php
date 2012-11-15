@@ -39,6 +39,11 @@ class DropboxApi extends CloudApi
 	protected $arrConfig;
     
     /**
+     * store all created nodes
+     */
+    protected $arrNodes = array();
+    
+    /**
      * vendor/dropbox API
      * 
      * @var Dropbox_API
@@ -153,7 +158,11 @@ class DropboxApi extends CloudApi
      */
 	public function getNode($strPath, $blnLoadChildren=true, $arrMetaData=null)
 	{
-	    return new DropboxNode($strPath, $this, $blnLoadChildren, $arrMetaData);
+	    if(!isset($this->arrNodes[$strPath])) {
+	        $this->arrNodes[$strPath] = new DropboxNode($strPath, $this, $blnLoadChildren, $arrMetaData);
+	    }
+        
+        return $this->arrNodes[$strPath];	    
     }
     
     
