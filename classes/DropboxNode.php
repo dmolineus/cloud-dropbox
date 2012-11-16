@@ -10,12 +10,7 @@ use Netzmacht\Cloud\Api;
  * @license GNU/LPGL
  */
 class DropboxNode extends Api\CloudNode 
-{  
-    /**
-     * 
-     * @var array
-     */
-    protected $arrCache = array();
+{
     
     /**
      * 
@@ -133,29 +128,7 @@ class DropboxNode extends Api\CloudNode
                 $arrMedia = $this->objConnection->media($this->strPath);
                 $this->arrCache['downloadUrl'] = $arrMedia['url'];
                 
-                break;
-            
-            case 'extension':
-                $this->arrCache[$strKey] = pathinfo($this->strPath, PATHINFO_EXTENSION);
-                break;
-            
-            case 'icon':
-                $arrMimeInfo = $this->getMimeInfo();
-                $this->arrCache[$strKey] = $arrMimeInfo[1];             
-                break;
-                
-            case 'isCached':
-                $this->arrCache[$strKey] = Api\CloudCache::isCached($this->cacheKey);
-                break;
-                
-            case 'isMetaCached':
-                $this->arrCache[$strKey] = Api\CloudCache::isCached($this->cacheMetaKey);
-                break;
-                
-            case 'mime':
-                $arrMimeInfo = $this->getMimeInfo();
-                $this->arrCache[$strKey] = $arrMimeInfo[0];
-                break;                           
+                break;            
             
             // load metadata if they are not loaded
             case 'children':
@@ -169,14 +142,13 @@ class DropboxNode extends Api\CloudNode
             case 'fileSize':            
             case 'version':            
                 $this->getMetaData();
-                break;                   
+                break;
+            
+            default:
+                return parent::_get($strKey);
+                break;                
         }
-        
-        // some meta data aren't created always so check if cache exists
-        if(!isset($this->arrCache[$strKey])) 
-        {
-            return null;
-        }        
+               
         return $this->arrCache[$strKey];
     }
 
