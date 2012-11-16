@@ -139,13 +139,13 @@ class DropboxNode extends Api\CloudNode
             case 'modified':
             case 'path':
             case 'root':
-            case 'fileSize':            
+            case 'filesize':            
             case 'version':            
                 $this->getMetaData();
                 break;
             
             default:
-                return parent::_get($strKey);
+                return parent::__get($strKey);
                 break;                
         }
                
@@ -307,7 +307,7 @@ class DropboxNode extends Api\CloudNode
         $blnLoadChildren = ($blnLoadChildren == null) ? $this->blnLoadChildren : $blnLoadChildren;
         $arrMetaData = $this->objConnection->getMetaData($this->strPath, $blnLoadChildren);                    
 
-        $this->arrCache['fileSize'] = $arrMetaData['bytes'];                                
+        $this->arrCache['filesize'] = $arrMetaData['bytes'];                                
         $this->arrCache['hash'] = $arrMetaData['hash'];
         $this->arrCache['hasThumbnail'] = $arrMetaData['thumb_exists'];
         $this->arrCache['path'] = $arrMetaData['path'];
@@ -427,7 +427,7 @@ class DropboxNode extends Api\CloudNode
                     break;
                     
                 case 'bytes':
-                    $this->arrCache['fileSize'] = $mxdValue;
+                    $this->arrCache['filesize'] = $mxdValue;
                     break;
                     
                 case 'children':
@@ -464,7 +464,7 @@ class DropboxNode extends Api\CloudNode
                 case 'mime':
                 case 'modified':
                 case 'root':
-                case 'fileSize':
+                case 'filesize':
                 case 'cacheThumbnailKey':
                 case 'version':
                 case 'path':
