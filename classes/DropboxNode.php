@@ -160,8 +160,7 @@ class DropboxNode extends Api\CloudNode
             // load metadata if they are not loaded
             case 'children':
             case 'childrenLoaded':
-            case 'isFile':
-            case 'isDir':   
+            case 'type':              
             case 'hash': 
             case 'hasThumbnail':            
             case 'modified':
@@ -335,14 +334,13 @@ class DropboxNode extends Api\CloudNode
         
         $blnLoadChildren = ($blnLoadChildren == null) ? $this->blnLoadChildren : $blnLoadChildren;
         $arrMetaData = $this->objConnection->getMetaData($this->strPath, $blnLoadChildren);                    
-                
-        $this->arrCache['isFile'] = !$arrMetaData['is_dir'];
-        $this->arrCache['isDir'] = $arrMetaData['is_dir'];
+
+        $this->arrCache['fileSize'] = $arrMetaData['bytes'];                                
         $this->arrCache['hash'] = $arrMetaData['hash'];
         $this->arrCache['hasThumbnail'] = $arrMetaData['thumb_exists'];
         $this->arrCache['path'] = $arrMetaData['path'];
         $this->arrCache['root'] = $arrMetaData['root'];
-        $this->arrCache['fileSize'] = $arrMetaData['bytes'];
+        $this->arrCache['type'] = $arrMetaData['is_dir'] ? 'folder' : 'file';        
         $this->arrCache['childrenLoaded'] = $blnLoadChildren;
         
         if($arrMetaData['contents']) 
@@ -453,8 +451,7 @@ class DropboxNode extends Api\CloudNode
             switch($strKey) 
             {
                 case 'is_dir':
-                    $this->arrCache['isFile'] = !$mxdValue;
-                    $this->arrCache['isDir'] = $mxdValue;
+                    $this->arrCache['type'] = $mxdValue ? 'folder' : 'file';
                     break;
                     
                 case 'bytes':
@@ -491,8 +488,7 @@ class DropboxNode extends Api\CloudNode
                 case 'hash':
                 case 'hasThumbnail':
                 case 'icon':
-                case 'isFile':
-                case 'isDir':
+                case 'type':                
                 case 'mime':
                 case 'modified':
                 case 'root':
@@ -538,7 +534,7 @@ class DropboxNode extends Api\CloudNode
             }                   
         }    
         
-        if($this->isDir) 
+        if($this->type == 'folder') 
         {
             if($this->objConnection->getMetadata($this->strPath, false, $this->hash) === true) 
             {
