@@ -15,8 +15,7 @@
 /**
  * Back end modules
  */
-$GLOBALS['TL_LANG']['MOD'][''] = array('', '');
-
+$GLOBALS['TL_LANG']['MOD']['cloudapi_dropbox'] = array('Dropbox', 'Erlaubt die Nutzung von Dropbox mittels der Cloud Api');
 
 /**
  * Front end modules
