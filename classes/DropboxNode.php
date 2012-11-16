@@ -49,7 +49,7 @@ class DropboxNode extends Api\CloudNode
         parent::__construct($strPath, $objApi);
         
         $this->blnLoadChildren = $blnLoadChildren;
-        $this->objConnection = $objApi->getConnection();
+        $this->objConnection = $objApi->getConnection();                
         
         // set meta data
         if(is_array($arrMetaData)) 
@@ -62,7 +62,7 @@ class DropboxNode extends Api\CloudNode
         {            
             $this->getMetaData();
             return;
-        }
+        }                
         
         
         // load cached file informations
@@ -459,7 +459,6 @@ class DropboxNode extends Api\CloudNode
                 case 'extension':
                 case 'hash':
                 case 'hasThumbnail':
-                case 'icon':
                 case 'type':                
                 case 'mime':
                 case 'modified':
