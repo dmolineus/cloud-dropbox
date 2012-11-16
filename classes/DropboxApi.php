@@ -17,195 +17,195 @@ require_once TL_ROOT . '/system/modules/cloud-dropbox/vendor/Dropbox/autoload.ph
  */
 class DropboxApi extends CloudApi
 {
-    /**
-     * dropbox const for 
-     * 
-     * @var string
-     */
-    const DROPBOX = 'dropbox';
-    
-    /**
-     * dropbox const for 
-     * 
-     * @var string
-     */
-    const SANDBOX = 'sandbox';
-    
-    /**
-     * reference to config array
-     * 
-     * @var array
-     */
+	/**
+	 * dropbox const for 
+	 * 
+	 * @var string
+	 */
+	const DROPBOX = 'dropbox';
+	
+	/**
+	 * dropbox const for 
+	 * 
+	 * @var string
+	 */
+	const SANDBOX = 'sandbox';
+	
+	/**
+	 * reference to config array
+	 * 
+	 * @var array
+	 */
 	protected $arrConfig;
-    
-    /**
-     * store all created nodes
-     */
-    protected $arrNodes = array();
-    
-    /**
-     * vendor/dropbox API
-     * 
-     * @var Dropbox_API
-     */
+	
+	/**
+	 * store all created nodes
+	 */
+	protected $arrNodes = array();
+	
+	/**
+	 * vendor/dropbox API
+	 * 
+	 * @var Dropbox_API
+	 */
 	protected $objConnection;
-    
-    /**
-     * oauth for dropbox
-     * 
-     * @var OAuth
-     */
-    protected $objOauth;
+	
+	/**
+	 * oauth for dropbox
+	 * 
+	 * @var OAuth
+	 */
+	protected $objOauth;
 
 
-    /**
-     * constructor 
-     * 
-     * @return void
-     */
+	/**
+	 * constructor 
+	 * 
+	 * @return void
+	 */
 	public function __construct()
 	{
 		$this->arrConfig = &$GLOBALS['TL_CONFIG'];
 		
 		$strOauth = $this->arrConfig['dropboxOauth'];
-        if($strOauth == '') {
-            $strOauth = 'PHP';
-        }
-        $strOauthClass = '\Dropbox_OAuth_' . $strOauth;
+		if($strOauth == '') {
+			$strOauth = 'PHP';
+		}
+		$strOauthClass = '\Dropbox_OAuth_' . $strOauth;
 
-        $this->objOauth = new $strOauthClass($this->arrConfig['dropboxCustomerKey'], $this->arrConfig['dropboxCustomerSecret']);
+		$this->objOauth = new $strOauthClass($this->arrConfig['dropboxCustomerKey'], $this->arrConfig['dropboxCustomerSecret']);
 
-    }
-    
+	}
+	
 
-    /**
-     * authenticate and create drobox api
-     * 
-     * @throws Exception if no valid token has found
-     * @return bool
-     */
+	/**
+	 * authenticate and create drobox api
+	 * 
+	 * @throws Exception if no valid token has found
+	 * @return bool
+	 */
 	public function authenticate()
 	{
-	    // try to get access token 
-	    if(!isset($this->arrConfig['dropboxAccessToken']) || $this->arrConfig['dropboxAccessToken'] == '') {
-	        $this->import('Session');
-            
-            $arrRequestToken = $this->Session->get('dropboxRequestToken');
-            
-            if(!$arrRequestToken) {
-                throw new \Exception('Not able to authenticate Dropbox. No request token found.');
-            }                       
-            
-            $this->objOauth->setToken($arrRequestToken);
-            $arrToken = $this->objOauth->getAccessToken();     
-            
-            $this->import('Config');            
-            $this->Config->add('$GLOBALS[\'TL_CONFIG\'][\'dropboxAccessToken\']', serialize($arrToken));
-            $this->Config->save();
-            
-            $this->arrConfig['dropboxAccessToken'] = serialize($arrToken);
-	    }
-        
+		// try to get access token 
+		if(!isset($this->arrConfig['dropboxAccessToken']) || $this->arrConfig['dropboxAccessToken'] == '') {
+			$this->import('Session');
+			
+			$arrRequestToken = $this->Session->get('dropboxRequestToken');
+			
+			if(!$arrRequestToken) {
+				throw new \Exception('Not able to authenticate Dropbox. No request token found.');
+			}						
+			
+			$this->objOauth->setToken($arrRequestToken);
+			$arrToken = $this->objOauth->getAccessToken();	 
+			
+			$this->import('Config');			
+			$this->Config->add('$GLOBALS[\'TL_CONFIG\'][\'dropboxAccessToken\']', serialize($arrToken));
+			$this->Config->save();
+			
+			$this->arrConfig['dropboxAccessToken'] = serialize($arrToken);
+		}
+		
 		$this->objOauth->setToken(unserialize($this->arrConfig['dropboxAccessToken']));
 		$this->objConnection = new \Dropbox_API($this->objOauth, $this->getRoot());
-        return true;
+		return true;
 	}
-    
+	
 
-    /**
-     * get dropbox account info
-     * 
-     * @return array
-     */
+	/**
+	 * get dropbox account info
+	 * 
+	 * @return array
+	 */
 	public function getAccountInfo()
 	{
 		return $this->objConnection->getAccountInfo();
 	}
 
 
-    /**
-     * get authorize url
-     * 
-     * @return string
-     */
-    public function getAuthorizeUrl()
-    {
-        $this->import('Session');
-        
-        $strToken = $this->objOauth->getRequestToken();
-        $this->Session->set('dropboxRequestToken', $strToken);
-        $this->objOauth->setToken($strToken);
-        return $this->objOauth->getAuthorizeUrl();
-    }
-    
-    
-    /**
-     * return connection object
-     * 
-     * @return DROPBOX_API
-     */
-    public function getConnection()
-    {
-        return $this->objConnection;
-    }
-   
+	/**
+	 * get authorize url
+	 * 
+	 * @return string
+	 */
+	public function getAuthorizeUrl()
+	{
+		$this->import('Session');
+		
+		$strToken = $this->objOauth->getRequestToken();
+		$this->Session->set('dropboxRequestToken', $strToken);
+		$this->objOauth->setToken($strToken);
+		return $this->objOauth->getAuthorizeUrl();
+	}
+	
+	
+	/**
+	 * return connection object
+	 * 
+	 * @return DROPBOX_API
+	 */
+	public function getConnection()
+	{
+		return $this->objConnection;
+	}
+	
 
-    /**
-     * get dropbox node (file or folder)
-     * 
-     * @param string $strPath
-     * @return void
-     */
+	/**
+	 * get dropbox node (file or folder)
+	 * 
+	 * @param string $strPath
+	 * @return void
+	 */
 	public function getNode($strPath, $blnLoadChildren=true, $arrMetaData=null)
 	{
-	    if($strPath == '') {
-	        $strPath = '/';
-        }
-        
-	    if(!isset($this->arrNodes[$strPath])) {	        	        	       
-	        $this->arrNodes[$strPath] = new DropboxNode($strPath, $this, $blnLoadChildren, $arrMetaData);                        
-	    }
-        
-        return $this->arrNodes[$strPath];	    
-    }
-    
-    
-    /**
-     * search for nodes
-     * 
-     * @return array
-     * @param string search query
-     * param string starting point
-     */
-    public function searchNodes($strQuery, $strPath='')
-    {
-        $arrResult = $this->objConnection->search($strQuery, null, $strPath);
-        
-        if(empty($arrResult)) 
-        {
-            return array();
-        }
-        
-        $arrNodes = array();
-        
-        foreach ($arrResult as $arrChild) 
-        {
-            $objNode = $this->getNode($arrChild['path'], false, $arrChild);
-            $arrNodes[$objNode->path] = $objNode;
-        }
-        
-        return $arrNodes;        
-    }
-    
-    
-    /**
-     * get root path of dropbox
-     * 
-     * @return string
-     */
-    public function getRoot()
-    {
-        return $this->arrConfig['dropboxRoot'];
-    }
+		if($strPath == '') {
+			$strPath = '/';
+		}
+		
+		if(!isset($this->arrNodes[$strPath])) {									
+			$this->arrNodes[$strPath] = new DropboxNode($strPath, $this, $blnLoadChildren, $arrMetaData);						
+		}
+		
+		return $this->arrNodes[$strPath];		
+	}
+	
+	
+	/**
+	 * search for nodes
+	 * 
+	 * @return array
+	 * @param string search query
+	 * param string starting point
+	 */
+	public function searchNodes($strQuery, $strPath='')
+	{
+		$arrResult = $this->objConnection->search($strQuery, null, $strPath);
+		
+		if(empty($arrResult)) 
+		{
+			return array();
+		}
+		
+		$arrNodes = array();
+		
+		foreach ($arrResult as $arrChild) 
+		{
+			$objNode = $this->getNode($arrChild['path'], false, $arrChild);
+			$arrNodes[$objNode->path] = $objNode;
+		}
+		
+		return $arrNodes;		
+	}
+	
+	
+	/**
+	 * get root path of dropbox
+	 * 
+	 * @return string
+	 */
+	public function getRoot()
+	{
+		return $this->arrConfig['dropboxRoot'];
+	}
 
 }

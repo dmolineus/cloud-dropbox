@@ -18,20 +18,20 @@
  * License along with this program. If not, please visit the Free
  * Software Foundation website at <http://www.gnu.org/licenses/>.
  *
- * @copyright  David Molineus 2012
- * @author     David Molineus <mail@netzmacht.de>
- * @package    CloudApi
- * @license    GNU/LGPL
+ * @copyright	David Molineus 2012
+ * @author	 David Molineus <mail@netzmacht.de>
+ * @package	CloudApi
+ * @license	GNU/LGPL
  */
 
 
 $GLOBALS['TL_DCA']['tl_settings']['palettes']['__selector__'][] = 'enableDropbox';
 $GLOBALS['TL_DCA']['tl_settings']['palettes']['__selector__'][] = 'dropboxCustomApp';
 $GLOBALS['TL_DCA']['tl_settings']['palettes']['default'] = str_replace(
-    '{cloudapi_legend}', 
-    '{cloudapi_legend},enableDropbox', 
-    $GLOBALS['TL_DCA']['tl_settings']['palettes']['default']
-);    
+	'{cloudapi_legend}', 
+	'{cloudapi_legend},enableDropbox', 
+	$GLOBALS['TL_DCA']['tl_settings']['palettes']['default']
+);	
 
 $GLOBALS['TL_DCA']['tl_settings']['subpalettes']['enableDropbox'] = 'dropboxOauth,dropboxAccessToken,dropboxCustomApp';
 $GLOBALS['TL_DCA']['tl_settings']['subpalettes']['dropboxCustomApp'] = 'dropboxCustomerKey,dropboxCustomerSecret,dropboxRoot';
@@ -39,51 +39,51 @@ $GLOBALS['TL_DCA']['tl_settings']['subpalettes']['dropboxCustomApp'] = 'dropboxC
 
 $GLOBALS['TL_DCA']['tl_settings']['fields']['enableDropbox'] = array
 (
-    'label'                   => &$GLOBALS['TL_LANG']['tl_settings']['enableDropbox'],
-    'inputType'               => 'checkbox',
-    'eval'                    => array('submitOnChange'=>true)
+	'label'					=> &$GLOBALS['TL_LANG']['tl_settings']['enableDropbox'],
+	'inputType'				=> 'checkbox',
+	'eval'					=> array('submitOnChange'=>true)
 );
 
 $GLOBALS['TL_DCA']['tl_settings']['fields']['dropboxCustomApp'] = array
 (
-    'label'                   => &$GLOBALS['TL_LANG']['tl_settings']['dropboxCustomApp'],
-    'inputType'               => 'checkbox',
-    'eval'                    => array('submitOnChange'=>true, 'tl_class' => 'clr')
+	'label'					=> &$GLOBALS['TL_LANG']['tl_settings']['dropboxCustomApp'],
+	'inputType'				=> 'checkbox',
+	'eval'					=> array('submitOnChange'=>true, 'tl_class' => 'clr')
 );
 
 $GLOBALS['TL_DCA']['tl_settings']['fields']['dropboxCustomerKey'] = array
 (
-    'label'                   => &$GLOBALS['TL_LANG']['tl_settings']['dropboxCustomerKey'],
-    'inputType'               => 'text',
-    'eval'                    => array('mandatory'=>true, 'tl_class'=>'w50')
+	'label'					=> &$GLOBALS['TL_LANG']['tl_settings']['dropboxCustomerKey'],
+	'inputType'				=> 'text',
+	'eval'					=> array('mandatory'=>true, 'tl_class'=>'w50')
 );
 
 $GLOBALS['TL_DCA']['tl_settings']['fields']['dropboxCustomerSecret'] = array
 (
-    'label'                   => &$GLOBALS['TL_LANG']['tl_settings']['dropboxCustomerSecret'],
-    'inputType'               => 'text',    
-    'eval'                    => array('mandatory'=>true, 'nospace'=>'true', 'tl_class'=>'w50')
+	'label'					=> &$GLOBALS['TL_LANG']['tl_settings']['dropboxCustomerSecret'],
+	'inputType'				=> 'text',	
+	'eval'					=> array('mandatory'=>true, 'nospace'=>'true', 'tl_class'=>'w50')
 );
 
 $GLOBALS['TL_DCA']['tl_settings']['fields']['dropboxRoot'] = array
 (
-    'label'                   => &$GLOBALS['TL_LANG']['tl_settings']['dropboxRoot'],
-    'inputType'               => 'select',
-    'options'                 => array('dropbox', 'sandbox'),
-    'eval'                    => array('mandatory'=>true, 'tl_class'=>'w50')
+	'label'					=> &$GLOBALS['TL_LANG']['tl_settings']['dropboxRoot'],
+	'inputType'				=> 'select',
+	'options'				 => array('dropbox', 'sandbox'),
+	'eval'					=> array('mandatory'=>true, 'tl_class'=>'w50')
 );
 
 $GLOBALS['TL_DCA']['tl_settings']['fields']['dropboxOauth'] = array
 (
-    'label'                   => &$GLOBALS['TL_LANG']['tl_settings']['dropboxOauth'],
-    'inputType'               => 'select',
-    'options'                 => array('Curl', 'PEAR', 'PHP' /*, 'Wordpress', 'Zend'*/),  
-    'eval'                    => array('mandatory'=>true, 'nospace'=>'true', 'tl_class'=>'w50')
+	'label'					=> &$GLOBALS['TL_LANG']['tl_settings']['dropboxOauth'],
+	'inputType'				=> 'select',
+	'options'				 => array('Curl', 'PEAR', 'PHP' /*, 'Wordpress', 'Zend'*/),	
+	'eval'					=> array('mandatory'=>true, 'nospace'=>'true', 'tl_class'=>'w50')
 );
 
 $GLOBALS['TL_DCA']['tl_settings']['fields']['dropboxAccessToken'] = array
 (
-    'label'                   => &$GLOBALS['TL_LANG']['tl_settings']['dropboxAccessToken'],
-    'inputType'               => 'accesToken',
-    'eval'                    => array('nospace'=>'true', 'cloudApi' => 'dropbox', 'tl_class' => 'w50')
+	'label'					=> &$GLOBALS['TL_LANG']['tl_settings']['dropboxAccessToken'],
+	'inputType'				=> 'accesToken',
+	'eval'					=> array('nospace'=>'true', 'cloudApi' => 'dropbox', 'tl_class' => 'w50')
 );
