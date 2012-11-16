@@ -167,6 +167,34 @@ class DropboxApi extends CloudApi
     
     
     /**
+     * search for nodes
+     * 
+     * @return array
+     * @param string search query
+     * param string starting point
+     */
+    public function searchNodes($strQuery, $strPath='')
+    {
+        $arrResult = $this->objConnection->search($strQuery, null, $strPath);
+        
+        if(empty($arrResult)) 
+        {
+            return array();
+        }
+        
+        $arrNodes = array();
+        
+        foreach ($arrResult as $arrChild) 
+        {
+            $objNode = $this->getNode($arrChild['path'], false, $arrChild);
+            $arrNodes[$objNode->path] = $objNode;
+        }
+        
+        return $arrNodes;        
+    }
+    
+    
+    /**
      * get root path of dropbox
      * 
      * @return string
