@@ -32,6 +32,11 @@ $GLOBALS['TL_CONFIG']['dropboxRoot'] = 'dropbox';
 $GLOBALS['TL_CONFIG']['dropboxCustomerKey'] = 'asc7atgjdcbjqgk';
 $GLOBALS['TL_CONFIG']['dropboxCustomerSecret'] = 'omqgys456jno5ns';
 
+/**
+ * add dropbox cache file to affected dirs for purging them
+ */
+$GLOBALS['TL_PURGE']['folders']['cloud-api']['affected'][] = 'system/cache/cloud-api/dropbox';
+
 
 /**
  * BACK END MODULES

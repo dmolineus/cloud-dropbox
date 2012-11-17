@@ -28,8 +28,8 @@
 $GLOBALS['TL_DCA']['tl_settings']['palettes']['__selector__'][] = 'enableDropbox';
 $GLOBALS['TL_DCA']['tl_settings']['palettes']['__selector__'][] = 'dropboxCustomApp';
 $GLOBALS['TL_DCA']['tl_settings']['palettes']['default'] = str_replace(
-	'{cloudapi_legend}', 
-	'{cloudapi_legend},enableDropbox', 
+	'cloudapi_hook', 
+	'enableDropbox,cloudapi_hook', 
 	$GLOBALS['TL_DCA']['tl_settings']['palettes']['default']
 );	
 
