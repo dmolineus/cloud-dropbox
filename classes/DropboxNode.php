@@ -1,5 +1,17 @@
 <?php
 
+/**
+ * Contao Open Source CMS
+ * 
+ * Copyright (C) 2005-2012 Leo Feyer
+ * 
+ * @package   cloud-dropbox 
+ * @author    David Molineus <http://www.netzmacht.de>
+ * @license   GNU/LGPL 
+ * @copyright Copyright 2012 David Molineus netzmacht creative 
+ *  
+ **/
+
 namespace Netzmacht\Cloud\Dropbox;
 use Netzmacht\Cloud\Api;
 
@@ -164,8 +176,9 @@ class DropboxNode extends Api\CloudNode
 		switch ($strKey) 
 		{
 			case 'thumbnailVersion':
+			case 'cachedFileVersion':
 				$this->arrCache[$strKey] = $mxdValue;
-				break;
+				break;							
 				
 			case 'default':
 				return;
@@ -262,6 +275,7 @@ class DropboxNode extends Api\CloudNode
 			return $this->arrChildren;
 		}
 		
+		// children meta data are stored but nodes are not created yet		
 		foreach ($this->children as $strChild) 
 		{
 			$objChild = $this->objApi->getNode($strChild, false);
@@ -288,6 +302,10 @@ class DropboxNode extends Api\CloudNode
 		$strContent = $this->objConnection->getFile($this->strPath);
 		Api\CloudCache::cache($this->cacheKey, $strContent);
 		
+		// save cached file version so we can decide if we have to delete it
+		// during updating the cache 
+		$this->cachedFileVersion = $this->version;
+		
 		return $strContent;
 	}
 	
@@ -296,9 +314,11 @@ class DropboxNode extends Api\CloudNode
 	 * get meta data from dropbox
 	 * 
 	 * @return void
+	 * @param mixed set true if force loading children
 	 */
 	protected function getMetaData($blnLoadChildren = null)
 	{
+		// check if meta data are already loaded
 		if(($this->blnMetaDataLoaded == true && $blnLoadChildren == null ) || ($blnLoadChildren == true && $this->childrenLoaded)) 
 		{
 			return;
@@ -314,7 +334,8 @@ class DropboxNode extends Api\CloudNode
 		$this->arrCache['root'] = $arrMetaData['root'];
 		$this->arrCache['type'] = $arrMetaData['is_dir'] ? 'folder' : 'file';		
 		$this->arrCache['childrenLoaded'] = $blnLoadChildren;
-		
+						
+		// create children nodes so their meta data are stored
 		if($arrMetaData['contents']) 
 		{
 			$this->arrCache['children'] = array();
@@ -363,7 +384,7 @@ class DropboxNode extends Api\CloudNode
 			$strContent = $this->objConnection->getThumbnail($this->strPath, $strSize);
 			Api\CloudCache::cache($this->cacheThumbnailKey, $strContent);
 			
-			// store thumbnail version so we can decide if we have to delete it
+			// save thumbnail version so we can decide if we have to delete it
 			// during updating the cache 
 			$this->thumbnailVersion = $this->version;		 
 		}
@@ -386,6 +407,8 @@ class DropboxNode extends Api\CloudNode
 		Api\CloudCache::deleteFile($strKey);
 		
 		$this->objConnection->move($this->strPath, $strNewPath);
+		$this->strPath = $strNewPath;
+		$this->arrCache['path'] = $strNewPath;
 	}
 	
 	/**
@@ -398,6 +421,7 @@ class DropboxNode extends Api\CloudNode
 	{
 		$this->objConnection($this->strPath, $mxdPathOrFile);
 	}
+	
 	
 	/**
 	 * set metadata. usefull to import metadata from contents block of parent element
@@ -427,6 +451,7 @@ class DropboxNode extends Api\CloudNode
 					break;
 					
 				case 'bytes':
+				case 'filesize':
 					$this->arrCache['filesize'] = $mxdValue;
 					break;
 					
@@ -445,8 +470,25 @@ class DropboxNode extends Api\CloudNode
 					}	
 					$this->arrCache['childrenLoaded'] = true;
 					break;
-				
+					
+				case 'hash':
+					// hash has changed so folder has changed
+					if(isset($this->arrCache['hash']))
+					{
+						$this->blnHasChanged = ($this->arrCache['hash'] != $mxdValue);						
+					}
+					
+					$this->arrCache['hash'] = $mxdValue;
+					break;
+									
 				case 'rev':
+				case 'version':
+					// version has changed so folder has changed
+					if(isset($this->arrCache['version']))
+					{
+						$this->blnHasChanged = ($this->arrCache['version'] != $mxdValue);						
+					}
+					
 					$this->arrCache['version'] = $mxdValue;
 					break;
 						
@@ -455,18 +497,18 @@ class DropboxNode extends Api\CloudNode
 					break;					
 									
 				case 'cacheKey':
-				case 'cacheMetaKey':				
-				case 'extension':
-				case 'hash':
+				case 'cacheMetaKey':
+				case 'cacheThumbnailKey':
+				case 'cachedFileVersion':				
+				case 'extension':				
 				case 'hasThumbnail':
+				case 'hasCachedFile':
 				case 'type':				
 				case 'mime':
 				case 'modified':
-				case 'root':
-				case 'filesize':
-				case 'cacheThumbnailKey':
-				case 'version':
+				case 'root':						
 				case 'path':
+				case 'thumbnailVersion':
 					$this->arrCache[$strKey] = $mxdValue;		
 					break;
 			}
@@ -475,6 +517,7 @@ class DropboxNode extends Api\CloudNode
 		$this->blnMetaDataLoaded = true;
 		$this->blnMetaDataChanged = true;
 	}
+
 
 	/**
 	 * check if online file has changed since last call
@@ -485,7 +528,26 @@ class DropboxNode extends Api\CloudNode
 	{		
 		if($this->blnHasChanged !== null) 
 		{
-			return $this->blnHasChanged;
+			if(!$this->blnHasChanged)
+			{
+				return false;
+			}
+			
+			// delete thumbnail cache
+			if($this->hasThumbnail && $this->thumbnailVersion != $this->version) 
+			{
+				Api\CloudCache::delete($this->cacheThumbnailKey);
+				$this->thumbnailVersion = null;
+			}
+			
+			// delete file cache
+			if($this->hasCachedFile && $this->cachedFileVersion != $this->version)
+			{
+				Api\CloudCache::delete($this->cacheKey);
+				$this->cachedFileVersion = null;
+			}
+			
+			return true;
 		}		
 		
 		// let's check for changes going back to the root directory
@@ -505,6 +567,7 @@ class DropboxNode extends Api\CloudNode
 			}					
 		}	
 		
+		// check if folder has changed
 		if($this->type == 'folder') 
 		{
 			if($this->objConnection->getMetadata($this->strPath, false, $this->hash) === true) 
@@ -513,29 +576,14 @@ class DropboxNode extends Api\CloudNode
 			} 
 			else 
 			{
-				$this->blnMetaDataLoaded = false;
-				// this will update the children as well
+				// getMetaData() will update the children as well
+				$this->blnMetaDataLoaded = false;			
 				$this->getMetaData(); 
 				$this->blnHasChanged = true;
 			};
-			
-			return $this->blnHasChanged;
 		}
 		
-		// we do not really know if file is changed because updating
-		// parent also updated children. but we've stored the thumbnail version. 
-		// let's delete thumbnail so it has to created again			
-		if($this->hasThumbnail && $this->thumbnailVersion != $this->version) 
-		{
-			Api\CloudCache::delete($this->cacheThumbnailKey);
-			$this->thumbnailVersion = null;
-			$this->blnHasChanged = true;
-		}
-		else {
-			// file has probably not changed because thumb is up to date
-			// if there is no thumbnail we can not say it for sure
-			$this->blnHasChanged = false;
-		}
+		// TODO: Do we have to check if file has changed as well or does setMetaData() all we need?
 		
 		return $this->blnHasChanged;
 	}

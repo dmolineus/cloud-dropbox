@@ -1,11 +1,24 @@
 <?php
 
-// namespace settings
+/**
+ * Contao Open Source CMS
+ * 
+ * Copyright (C) 2005-2012 Leo Feyer
+ * 
+ * @package   cloud-dropbox 
+ * @author    David Molineus <http://www.netzmacht.de>
+ * @license   GNU/LGPL 
+ * @copyright Copyright 2012 David Molineus netzmacht creative 
+ *  
+ **/
+
 namespace Netzmacht\Cloud\Dropbox;
 use Netzmacht\Cloud\Api\CloudApi;
 
+
 // load dropbox-api autoload file
 require_once TL_ROOT . '/system/modules/cloud-dropbox/vendor/Dropbox/autoload.php';
+
 
 /**
  * Dropbox Api compatible with the cloud API 
@@ -40,6 +53,8 @@ class DropboxApi extends CloudApi
 	
 	/**
 	 * store all created nodes
+	 * 
+	 * @var array
 	 */
 	protected $arrNodes = array();
 	
@@ -68,9 +83,13 @@ class DropboxApi extends CloudApi
 		$this->arrConfig = &$GLOBALS['TL_CONFIG'];
 		
 		$strOauth = $this->arrConfig['dropboxOauth'];
-		if($strOauth == '') {
+		
+		// make PHP auth default
+		if($strOauth == '') 
+		{
 			$strOauth = 'PHP';
 		}
+
 		$strOauthClass = '\Dropbox_OAuth_' . $strOauth;
 
 		$this->objOauth = new $strOauthClass($this->arrConfig['dropboxCustomerKey'], $this->arrConfig['dropboxCustomerSecret']);
@@ -87,12 +106,14 @@ class DropboxApi extends CloudApi
 	public function authenticate()
 	{
 		// try to get access token 
-		if(!isset($this->arrConfig['dropboxAccessToken']) || $this->arrConfig['dropboxAccessToken'] == '') {
+		if(!isset($this->arrConfig['dropboxAccessToken']) || $this->arrConfig['dropboxAccessToken'] == '') 
+		{
 			$this->import('Session');
 			
 			$arrRequestToken = $this->Session->get('dropboxRequestToken');
 			
-			if(!$arrRequestToken) {
+			if(!$arrRequestToken) 
+			{
 				throw new \Exception('Not able to authenticate Dropbox. No request token found.');
 			}						
 			
@@ -107,7 +128,8 @@ class DropboxApi extends CloudApi
 		}
 		
 		$this->objOauth->setToken(unserialize($this->arrConfig['dropboxAccessToken']));
-		$this->objConnection = new \Dropbox_API($this->objOauth, $this->getRoot());
+		$this->objConnection = new \Dropbox_API($this->objOauth, $this->arrConfig['dropboxRoot']);
+		
 		return true;
 	}
 	
@@ -147,6 +169,16 @@ class DropboxApi extends CloudApi
 	public function getConnection()
 	{
 		return $this->objConnection;
+	}
+	
+	/**
+	 * get name of the cloud service
+	 * 
+	 * @return string
+	 */
+	public function getName()
+	{
+		return static::DROPBOX;
 	}
 	
 
@@ -195,17 +227,6 @@ class DropboxApi extends CloudApi
 		}
 		
 		return $arrNodes;		
-	}
-	
-	
-	/**
-	 * get root path of dropbox
-	 * 
-	 * @return string
-	 */
-	public function getRoot()
-	{
-		return $this->arrConfig['dropboxRoot'];
 	}
 
 }

@@ -1,30 +1,23 @@
-<?php 
+<?php
 
 /**
- * Cloud Api
- * Copyright (C) 2012 David Molineus
- *
- * This program is free software: you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation, either
- * version 3 of the License, or (at your option) any later version.
+ * Contao Open Source CMS
  * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
+ * Copyright (C) 2005-2012 Leo Feyer
  * 
- * You should have received a copy of the GNU Lesser General Public
- * License along with this program. If not, please visit the Free
- * Software Foundation website at <http://www.gnu.org/licenses/>.
- *
- * @copyright	David Molineus 2012
- * @author	 David Molineus <mail@netzmacht.de>
- * @package	CloudApi
- * @license	GNU/LGPL
+ * @package   cloud-dropbox 
+ * @author    David Molineus <http://www.netzmacht.de>
+ * @license   GNU/LGPL 
+ * @copyright Copyright 2012 David Molineus netzmacht creative 
+ *  
+ **/
+
+
+/**
+ * define palettes and selectors
+ * 
+ * use cloudapi_hook for inserting fields
  */
-
-
 $GLOBALS['TL_DCA']['tl_settings']['palettes']['__selector__'][] = 'enableDropbox';
 $GLOBALS['TL_DCA']['tl_settings']['palettes']['__selector__'][] = 'dropboxCustomApp';
 $GLOBALS['TL_DCA']['tl_settings']['palettes']['default'] = str_replace(
@@ -33,10 +26,17 @@ $GLOBALS['TL_DCA']['tl_settings']['palettes']['default'] = str_replace(
 	$GLOBALS['TL_DCA']['tl_settings']['palettes']['default']
 );	
 
+
+/**
+ * defining sub palettes
+ */
 $GLOBALS['TL_DCA']['tl_settings']['subpalettes']['enableDropbox'] = 'dropboxOauth,dropboxAccessToken,dropboxCustomApp';
 $GLOBALS['TL_DCA']['tl_settings']['subpalettes']['dropboxCustomApp'] = 'dropboxCustomerKey,dropboxCustomerSecret,dropboxRoot';
 
 
+/**
+ * defining fields
+ */
 $GLOBALS['TL_DCA']['tl_settings']['fields']['enableDropbox'] = array
 (
 	'label'					=> &$GLOBALS['TL_LANG']['tl_settings']['enableDropbox'],

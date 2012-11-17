@@ -5,10 +5,12 @@
  * 
  * Copyright (C) 2005-2012 Leo Feyer
  * 
- * @package Cloud-dropbox
- * @link    http://contao.org
- * @license http://www.gnu.org/licenses/lgpl-3.0.html LGPL
- */
+ * @package   cloud-dropbox 
+ * @author    David Molineus <http://www.netzmacht.de>
+ * @license   GNU/LGPL 
+ * @copyright Copyright 2012 David Molineus netzmacht creative 
+ *  
+ **/
 
 
 /**
@@ -29,7 +31,4 @@ ClassLoader::addClasses(array
 	'Netzmacht\Cloud\Dropbox\DropboxApi'  => 'system/modules/cloud-dropbox/classes/DropboxApi.php',
 	'Netzmacht\Cloud\Dropbox\DropboxNode' => 'system/modules/cloud-dropbox/classes/DropboxNode.php',
 
-	// Vendor
-	'APITest'                             => 'system/modules/cloud-dropbox/vendor/dropbox-php/tests/APITest.php',
-	'Dropbox'                             => 'system/modules/cloud-dropbox/vendor/Dropbox/OAuth/Consumer/Dropbox.php',
 ));
