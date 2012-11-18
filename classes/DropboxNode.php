@@ -499,7 +499,8 @@ class DropboxNode extends Api\CloudNode
 				case 'cacheKey':
 				case 'cacheMetaKey':
 				case 'cacheThumbnailKey':
-				case 'cachedFileVersion':				
+				case 'cachedFileVersion':
+				case 'dirname':				
 				case 'extension':				
 				case 'hasThumbnail':
 				case 'hasCachedFile':
