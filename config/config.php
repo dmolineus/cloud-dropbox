@@ -35,3 +35,9 @@ $GLOBALS['TL_CONFIG']['dropboxCustomerSecret'] = 'omqgys456jno5ns';
  * register dropbox cache file to affected dirs for purging them
  */
 $GLOBALS['TL_PURGE']['folders']['cloud-api']['affected'][] = 'system/cache/cloud-api/dropbox';
+
+
+/**
+ * define hooks
+*/
+$GLOBALS['TL_PERMISSIONS'][] = 'dropboxFilemounts';
