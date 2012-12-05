@@ -47,6 +47,11 @@ class DropboxNode extends Api\CloudNode
 	/**
 	 * 
 	 */
+	protected $blnNewNode = false;
+	
+	/**
+	 * 
+	 */
 	protected $objConnection;
 	
 		
@@ -58,7 +63,7 @@ class DropboxNode extends Api\CloudNode
 	 */
 	public function __construct($strPath, $objApi, $blnLoadChildren=true, $arrMetaData=null)
 	{
-		parent::__construct($strPath, $objApi);
+		parent::__construct($strPath, $objApi);		
 		
 		$this->blnLoadChildren = $blnLoadChildren;
 		$this->objConnection = $objApi->getConnection();				
@@ -91,7 +96,16 @@ class DropboxNode extends Api\CloudNode
 	 */
 	public function __destruct()
 	{
-		$this->cacheMetaFile();
+		if($this->blnNewNode)
+		{
+			// node does not exists so let create a new one
+			// TODO: implement CloudApi::createNode
+			//$this->objCloudApi->createNode($this);
+		}
+		else 
+		{
+			$this->cacheMetaFile();			
+		}		
 	}
 	
 		
@@ -319,13 +333,22 @@ class DropboxNode extends Api\CloudNode
 	protected function getMetaData($blnLoadChildren = null)
 	{
 		// check if meta data are already loaded
-		if(($this->blnMetaDataLoaded == true && $blnLoadChildren == null ) || ($blnLoadChildren == true && $this->childrenLoaded)) 
+		if(($this->blnMetaDataLoaded == true && $blnLoadChildren == null ) || ($blnLoadChildren == true && $this->childrenLoaded) || $this->blnNewNode) 
 		{
 			return;
 		} 
 		
 		$blnLoadChildren = ($blnLoadChildren == null) ? $this->blnLoadChildren : $blnLoadChildren;
-		$arrMetaData = $this->objConnection->getMetaData($this->strPath, $blnLoadChildren);					
+		
+		try 
+		{
+			$arrMetaData = $this->objConnection->getMetaData($this->strPath, $blnLoadChildren);	
+		}
+		catch(\Exception $e)
+		{
+			$this->blnNewNode = true;
+			return;
+		}
 
 		$this->arrCache['filesize'] = $arrMetaData['bytes'];								
 		$this->arrCache['hash'] = $arrMetaData['hash'];
