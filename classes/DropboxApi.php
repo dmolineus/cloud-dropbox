@@ -15,7 +15,6 @@
 namespace Netzmacht\Cloud\Dropbox;
 use Netzmacht\Cloud\Api\CloudApi;
 
-
 // load dropbox-api autoload file
 require_once TL_ROOT . '/system/modules/cloud-dropbox/vendor/Dropbox/autoload.php';
 
@@ -45,20 +44,6 @@ class DropboxApi extends CloudApi
 	const SANDBOX = 'sandbox';
 	
 	/**
-	 * reference to config array
-	 * 
-	 * @var array
-	 */
-	protected $arrConfig;
-	
-	/**
-	 * store all created nodes
-	 * 
-	 * @var array
-	 */
-	protected $arrNodes = array();
-	
-	/**
 	 * vendor/dropbox API
 	 * 
 	 * @var Dropbox_API
@@ -78,22 +63,53 @@ class DropboxApi extends CloudApi
 	 * 
 	 * @return void
 	 */
-	public function __construct()
+	public function __construct($arrRow)
 	{
-		$this->arrConfig = &$GLOBALS['TL_CONFIG'];
+		// will fetch app config
+		parent::__construct($arrRow);
 		
-		$strOauth = $this->arrConfig['dropboxOauth'];
-		
-		// make PHP auth default
-		if($strOauth == '') 
+		// no custom value set so get default app settings
+		// we have to encrypt/decrypt it because of dropbox guidlines
+		if($this->arrConfig['useCustomApp'] != '1')
 		{
-			$strOauth = 'PHP';
+			$this->arrConfig['appKey'] = base64_decode($GLOBALS['TL_CONFIG']['dropboxAppKey']);
+			$this->arrConfig['appSecret'] = base64_decode($GLOBALS['TL_CONFIG']['dropboxAppSecret']);			
 		}
-
-		$strOauthClass = '\Dropbox_OAuth_' . $strOauth;
-
-		$this->objOauth = new $strOauthClass($this->arrConfig['dropboxCustomerKey'], $this->arrConfig['dropboxCustomerSecret']);
-
+		
+		if(!isset($this->arrConfig['dropboxRoot']))
+		{
+			$this->arrConfig['dropboxRoot'] = $GLOBALS['TL_CONFIG']['dropboxRoot'];			
+		}		  
+		
+		$strOauth = $this->arrConfig['oAuthClass'];
+		$strOauthClass = '\Dropbox_OAuth_' . ($strOauth != '') ? $strOauth : 'PHP';
+		
+		$this->objOauth = new $strOauthClass($this->arrConfig['appKey'], $this->arrConfig['appSecret']);		
+	}
+	
+	
+	/**
+	 * get settings
+	 * 
+	 * @param string key
+	 * @return mixed
+	 */
+	public function __get($strKey)
+	{
+		switch($strKey)
+		{
+			case 'name':
+				return static::DROPBOX;
+				break;
+			
+			case 'mode':
+				return $this->arrConfig['mode'];
+				break;
+				
+			default:
+				return parent::__get($strKey);
+				break;
+		}
 	}
 	
 
@@ -171,34 +187,73 @@ class DropboxApi extends CloudApi
 		return $this->objConnection;
 	}
 	
-	/**
-	 * get name of the cloud service
-	 * 
-	 * @return string
-	 */
-	public function getName()
-	{
-		return static::DROPBOX;
-	}
-	
 
 	/**
 	 * get dropbox node (file or folder)
 	 * 
-	 * @param string $strPath
+	 * @param mixed path, database result or metadata array
 	 * @return void
 	 */
-	public function getNode($strPath, $blnLoadChildren=true, $arrMetaData=null)
+	public function getNode($mixedData, $blnLoadChildren=true)
 	{
-		if($strPath == '') {
-			$strPath = '/';
+		if(is_string($mixedData))
+		{
+			$strPath = $mixedData;
+			$mixedData = null;
+		}
+		elseif(is_array($mixedData) && isset($mixedData['path'])) 
+		{
+			$strPath = $mixedData['path'];
+		}
+		elseif($mixedData instanceof \Result) 
+		{
+			$strPath = $mixedData->path;			
+		}
+		else 
+		{
+			throw new \Exception('Invalid getNode call. Could not fetch file path');
 		}
 		
+		// make sure that key is not empty
+		if($strPath == '') 
+		{
+			$strPath = $this->getRoot();
+		}				
+		
 		if(!isset($this->arrNodes[$strPath])) {									
-			$this->arrNodes[$strPath] = new DropboxNode($strPath, $this, $blnLoadChildren, $arrMetaData);						
+			$this->arrNodes[$strPath] = new DropboxNode($strPath, $this, $blnLoadChildren, $mixedData);						
 		}
 		
 		return $this->arrNodes[$strPath];		
+	}
+	
+	
+	/**
+	 * get root path
+	 * 
+	 * @return string
+	 */
+	public function getRoot()
+	{
+		return '/';
+	}
+	
+	
+	/**
+	 * check if a node exists
+	 */
+	public function nodeExists($strPath)
+	{
+		if($this->mode == 'sync')
+		{
+			$objStmt = $this->Database->prepare('SELECT count(id) AS total FROM tl_cloudapi_nodes WHERE cloudapi=%s AND path=%s');
+			$objResult = $objStmt->execute($this->arrRow['id'], $strPath);
+			
+			return ($objResult->total > 0);
+		}
+		
+		$objNode = $this->getNode($strPath);
+		return $objNode->exists;
 	}
 	
 	
@@ -229,4 +284,93 @@ class DropboxApi extends CloudApi
 		return $arrNodes;		
 	}
 
+
+	/**
+	 * parse dropbox date and create a timestamp
+	 * 
+	 * @return int timestamp
+	 */
+	public function parseDate($strDate)
+	{
+		$arrDate = strptime($strDate, '%a, %d %b %Y %H:%M:%S %z');
+		
+		return mktime(
+			$arrDate['tm_hour'], 
+			$arrDate['tm_min'], 
+			$arrDate['tm_sec'],
+            $arrDate['tm_mon'] + 1, 
+            $arrDate['tm_mday'], 
+            $arrDate['tm_year'] + 1990
+		);
+	}
+
+
+	/**
+	 * execute the sync
+	 * 
+	 * @param string delta sync cursor
+	 * @return string current cursor
+	 */
+	protected function execSync($strCursor)
+	{
+		// use delta sync
+		// returns array with entries, reset, cursor, has_more
+		$arrDelta = $this->objConnection->delta($strCursor);
+		
+		// dropbox force to reset all nodes
+		if($arrDelta['reset'])
+		{
+			$objStmt = $this->Database->prepare('DELETE FROM ' . $this->name() . ' WHERE cloudapi=?');
+			$objStmt->execute($this->arrRow['id']);			
+		}		
+
+		foreach ($arrDelta['entries'] as $strPath => $varValue) 
+		{
+			// delete path and all children			
+			if($varValue === null && !$arrDelta['reset'])
+			{
+				$objStmt = $this->Database->prepare('DELETE FROM ' . $this->name() . ' WHERE cloudapi=? AND path Like ?');
+				$objStmt->execute($this->arrRow['id'], $strPath);
+				
+				continue;				
+			}
+			
+			// create all path nodes if they do not exists
+			$strWalkPath = dirname($strPath);
+			for($objResult = Api\CloudNodesModel::findByPath($strWalkPath); $objResult == null; $strPath = dirname($strWalkPath))
+			{
+				$objNode = $this->getNode($strWalkPath);
+				$objNode->save(true);
+			}
+			
+			$objEntry = null;
+			
+			if(!$arrDelta['reset'])
+			{				
+				$objEntry = Api\CloudNodesModel::findByPath($strPath);
+			}
+			
+			// create new node
+			if($objEntry == null)
+			{
+				$objNode = $this->getNode($strPath);
+			}
+			
+			// update node
+			else 
+			{
+				$objNode = $this->getNode($objEntry);				
+			}
+			
+			$objNode->save();
+		}
+		
+		// recursively call delta sync
+		if($arrDelta['has_more'])
+		{
+			return $this->execSync($arrDelta['cursor']);
+		}
+		
+		return $arrDelta['cursor'];		
+	}
 }

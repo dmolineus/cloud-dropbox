@@ -16,10 +16,7 @@
 /**
  * register dropbox api. tl config are loaded by cloud-api/config.php
  */
-Netzmacht\Cloud\Api\CloudApiManager::registerApi('dropbox', array(
-    'name' => 'Netzmacht\Cloud\Dropbox\DropboxApi',
-    'enabled' => &$GLOBALS['TL_CONFIG']['enableDropbox']
-));
+Netzmacht\Cloud\Api\CloudApiManager::registerApi('dropbox', 'Netzmacht\Cloud\Dropbox\DropboxApi');
 
 
 /**
@@ -27,8 +24,8 @@ Netzmacht\Cloud\Api\CloudApiManager::registerApi('dropbox', array(
  * Changes are usefull, for example, if you have to use dropbox in a sandbox
  */
 $GLOBALS['TL_CONFIG']['dropboxRoot'] = 'dropbox';
-$GLOBALS['TL_CONFIG']['dropboxCustomerKey'] = 'asc7atgjdcbjqgk';
-$GLOBALS['TL_CONFIG']['dropboxCustomerSecret'] = 'omqgys456jno5ns';
+$GLOBALS['TL_CONFIG']['dropboxAppKey'] = 'YXNjN2F0Z2pkY2JqcWdr';
+$GLOBALS['TL_CONFIG']['dropboxAppSecret'] = 'b21xZ3lzNDU2am5vNW5z';
 
 
 /**
