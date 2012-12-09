@@ -13,7 +13,7 @@
  **/
 
 namespace Netzmacht\Cloud\Dropbox;
-use Netzmacht\Cloud\Api\CloudApi;
+use Netzmacht\Cloud\Api;
 
 // load dropbox-api autoload file
 require_once TL_ROOT . '/system/modules/cloud-dropbox/vendor/Dropbox/autoload.php';
@@ -27,7 +27,7 @@ require_once TL_ROOT . '/system/modules/cloud-dropbox/vendor/Dropbox/autoload.ph
  * @link http://www.netzmacht.de
  * @license GNU/LGPL
  */
-class DropboxApi extends CloudApi
+class DropboxApi extends Api\CloudApi
 {
 	/**
 	 * dropbox const for 
@@ -42,6 +42,12 @@ class DropboxApi extends CloudApi
 	 * @var string
 	 */
 	const SANDBOX = 'sandbox';
+	
+	
+	/**
+	 * 
+	 */
+	protected $blnAuthenticated = false;
 	
 	/**
 	 * vendor/dropbox API
@@ -82,8 +88,7 @@ class DropboxApi extends CloudApi
 		}		  
 		
 		$strOauth = $this->arrConfig['oAuthClass'];
-		$strOauthClass = '\Dropbox_OAuth_' . ($strOauth != '') ? $strOauth : 'PHP';
-		
+		$strOauthClass = '\Dropbox_OAuth_' . (($strOauth != '') ? $strOauth : 'PHP');		
 		$this->objOauth = new $strOauthClass($this->arrConfig['appKey'], $this->arrConfig['appSecret']);		
 	}
 	
@@ -101,10 +106,6 @@ class DropboxApi extends CloudApi
 			case 'name':
 				return static::DROPBOX;
 				break;
-			
-			case 'mode':
-				return $this->arrConfig['mode'];
-				break;
 				
 			default:
 				return parent::__get($strKey);
@@ -121,8 +122,13 @@ class DropboxApi extends CloudApi
 	 */
 	public function authenticate()
 	{
+		if($this->blnAuthenticated)
+		{
+			return;
+		}
+		
 		// try to get access token 
-		if(!isset($this->arrConfig['dropboxAccessToken']) || $this->arrConfig['dropboxAccessToken'] == '') 
+		if(!isset($this->arrConfig['accessToken']) || $this->arrConfig['accessToken'] == '') 
 		{
 			$this->import('Session');
 			
@@ -132,20 +138,21 @@ class DropboxApi extends CloudApi
 			{
 				throw new \Exception('Not able to authenticate Dropbox. No request token found.');
 			}						
-			
+						
 			$this->objOauth->setToken($arrRequestToken);
-			$arrToken = $this->objOauth->getAccessToken();	 
+			$arrToken = $this->objOauth->getAccessToken();
 			
-			$this->import('Config');			
-			$this->Config->add('$GLOBALS[\'TL_CONFIG\'][\'dropboxAccessToken\']', serialize($arrToken));
-			$this->Config->save();
 			
-			$this->arrConfig['dropboxAccessToken'] = serialize($arrToken);
+			$objStmt = $this->Database->prepare('UPDATE tl_cloud_api %s WHERE name =?');
+			$objStmt->set(array('accessToken' => $arrToken));
+			$objStmt->execute($this->name);
+			
+			$this->arrConfig['accessToken'] = serialize($arrToken);
 		}
 		
-		$this->objOauth->setToken(unserialize($this->arrConfig['dropboxAccessToken']));
+		$this->objOauth->setToken(unserialize($this->arrConfig['accessToken']));
 		$this->objConnection = new \Dropbox_API($this->objOauth, $this->arrConfig['dropboxRoot']);
-		
+		$this->blnAuthenticated = true;
 		return true;
 	}
 	
@@ -157,6 +164,7 @@ class DropboxApi extends CloudApi
 	 */
 	public function getAccountInfo()
 	{
+		$this->authenticate();
 		return $this->objConnection->getAccountInfo();
 	}
 
@@ -194,25 +202,37 @@ class DropboxApi extends CloudApi
 	 * @param mixed path, database result or metadata array
 	 * @return void
 	 */
-	public function getNode($mixedData, $blnLoadChildren=true)
+	public function getNode($mixedData)
 	{
-		if(is_string($mixedData))
+		
+		// support multiple ways getting a node
+		switch (gettype($mixedData)) 
 		{
-			$strPath = $mixedData;
-			$mixedData = null;
+			case 'string':
+				$strPath = $mixedData;
+				$mixedData = null;
+				break;
+			
+			case 'integer':
+			
+				$objResult = \CloudNodeModel::findOneById($mixedData);
+				$strPath = $objResult === null ? '' : $objResult->path;				
+				$mixedData = $objResult;
+				break;
+				
+			case 'array':
+				$strPath = $mixedData['path'];
+				break;
+				
+			case 'object':
+				$strPath = $mixedData->path;
+				break;
+				
+			default:
+				throw new \Exception('Invalid getNode call. Could not fetch file path');
+				break;
 		}
-		elseif(is_array($mixedData) && isset($mixedData['path'])) 
-		{
-			$strPath = $mixedData['path'];
-		}
-		elseif($mixedData instanceof \Result) 
-		{
-			$strPath = $mixedData->path;			
-		}
-		else 
-		{
-			throw new \Exception('Invalid getNode call. Could not fetch file path');
-		}
+
 		
 		// make sure that key is not empty
 		if($strPath == '') 
@@ -221,7 +241,7 @@ class DropboxApi extends CloudApi
 		}				
 		
 		if(!isset($this->arrNodes[$strPath])) {									
-			$this->arrNodes[$strPath] = new DropboxNode($strPath, $this, $blnLoadChildren, $mixedData);						
+			$this->arrNodes[$strPath] = new DropboxNode($strPath, $this, $mixedData);						
 		}
 		
 		return $this->arrNodes[$strPath];		
@@ -243,15 +263,7 @@ class DropboxApi extends CloudApi
 	 * check if a node exists
 	 */
 	public function nodeExists($strPath)
-	{
-		if($this->mode == 'sync')
-		{
-			$objStmt = $this->Database->prepare('SELECT count(id) AS total FROM tl_cloudapi_nodes WHERE cloudapi=%s AND path=%s');
-			$objResult = $objStmt->execute($this->arrRow['id'], $strPath);
-			
-			return ($objResult->total > 0);
-		}
-		
+	{	
 		$objNode = $this->getNode($strPath);
 		return $objNode->exists;
 	}
@@ -263,9 +275,11 @@ class DropboxApi extends CloudApi
 	 * @return array
 	 * @param string search query
 	 * param string starting point
+	 * TODO: search in database
 	 */
 	public function searchNodes($strQuery, $strPath='')
 	{
+		$this->authenticate();
 		$arrResult = $this->objConnection->search($strQuery, null, $strPath);
 		
 		if(empty($arrResult)) 
@@ -277,7 +291,7 @@ class DropboxApi extends CloudApi
 		
 		foreach ($arrResult as $arrChild) 
 		{
-			$objNode = $this->getNode($arrChild['path'], false, $arrChild);
+			$objNode = $this->getNode($arrChild['path'], $arrChild);
 			$arrNodes[$objNode->path] = $objNode;
 		}
 		
@@ -290,7 +304,7 @@ class DropboxApi extends CloudApi
 	 * 
 	 * @return int timestamp
 	 */
-	public function parseDate($strDate)
+	public function parseDropboxDate($strDate)
 	{
 		$arrDate = strptime($strDate, '%a, %d %b %Y %H:%M:%S %z');
 		
@@ -300,7 +314,7 @@ class DropboxApi extends CloudApi
 			$arrDate['tm_sec'],
             $arrDate['tm_mon'] + 1, 
             $arrDate['tm_mday'], 
-            $arrDate['tm_year'] + 1990
+            $arrDate['tm_year'] + 1900
 		);
 	}
 
@@ -311,64 +325,130 @@ class DropboxApi extends CloudApi
 	 * @param string delta sync cursor
 	 * @return string current cursor
 	 */
-	protected function execSync($strCursor)
+	protected function execSync($strCursor, $arrMounted=array(), $arrPids=array())
 	{
 		// use delta sync
 		// returns array with entries, reset, cursor, has_more
+		$this->authenticate();
 		$arrDelta = $this->objConnection->delta($strCursor);
 		
 		// dropbox force to reset all nodes
 		if($arrDelta['reset'])
 		{
-			$objStmt = $this->Database->prepare('DELETE FROM ' . $this->name() . ' WHERE cloudapi=?');
+			$objStmt = $this->Database->prepare('UPDATE tl_cloud_node SET found="0" WHERE cloudapi=?');
 			$objStmt->execute($this->arrRow['id']);			
 		}		
 
-		foreach ($arrDelta['entries'] as $strPath => $varValue) 
+		foreach ($arrDelta['entries'] as $varValue) 
 		{
-			// delete path and all children			
-			if($varValue === null && !$arrDelta['reset'])
+			$strPath = strtolower($varValue[0]);
+			$arrMetaData = $varValue[1];
+			$blnMounted = false;
+			
+			// only include mounted files
+			if(is_array($arrMounted))
 			{
-				$objStmt = $this->Database->prepare('DELETE FROM ' . $this->name() . ' WHERE cloudapi=? AND path Like ?');
-				$objStmt->execute($this->arrRow['id'], $strPath);
+				foreach($arrMounted as $strFolder)
+				{
+					if(strncasecmp($strPath, $strFolder, strlen($strFolder)) !== 0)
+					{
+						$blnMounted = true;
+						continue 2;
+					}
+				}
+			}
+			
+			// delete path and all children			
+			if($arrMetaData === null && !$arrDelta['reset'])
+			{
+				$objStmt = $this->Database->prepare('DELETE FROM tl_cloud_node WHERE cloudapi=? AND path Like ?');
+				$objStmt->execute($this->id, $strPath);
 				
 				continue;				
 			}
 			
 			// create all path nodes if they do not exists
-			$strWalkPath = dirname($strPath);
-			for($objResult = Api\CloudNodesModel::findByPath($strWalkPath); $objResult == null; $strPath = dirname($strWalkPath))
+			// we have to store them in an array to start with last node			
+			$arrParents = array();
+			for($strWalkPath = dirname($strPath); !in_array($strWalkPath, array('.', '/', '\\', '')); $strWalkPath = dirname($strWalkPath))
 			{
-				$objNode = $this->getNode($strWalkPath);
-				$objNode->save(true);
-			}
+				if(isset($arrPids[$strWalkPath]))
+				{
+					break;
+				}
+
+				$objResult = \CloudNodeModel::countBy('path', $strWalkPath);
+				
+				if($objResult > 0)
+				{
+					break;
+				}
+				
+				$arrParents[] = $strWalkPath;
+			}			
 			
-			$objEntry = null;
-			
-			if(!$arrDelta['reset'])
-			{				
-				$objEntry = Api\CloudNodesModel::findByPath($strPath);
-			}
-			
-			// create new node
-			if($objEntry == null)
+			for($i = count($arrParents) - 1; $i >= 0; $i--)
 			{
-				$objNode = $this->getNode($strPath);
+				$objNode = $this->getNode($arrParents[$i]);
+				$strParent = dirname($objNode->path);
+				
+				if(!isset($arrPids[$strParent]))
+				{
+					$objResult = \CloudNodeModel::findByPath($strParent);
+					$arrPids[$strParent] = (isset($objResult->id)) ? $objResult->id : 0;					
+				}
+				
+				$objNode->pid = $arrPids[$strParent];
+				$objNode->type = 'folder';
+				$objNode->found = '1';
+				$objNode->save();				
+				$arrPids[$objNode->path] = $objNode->id;
 			}
 			
-			// update node
-			else 
+			if(!isset($arrPids[$strPath]))
 			{
-				$objNode = $this->getNode($objEntry);				
+				$objEntry = \CloudNodeModel::findOneByPath($strPath);
+				
+				// create new node
+				if($objEntry === null)
+				{
+					$objNode = $this->getNode($arrMetaData);
+					$strParent = dirname($objNode->path);
+					
+					if(!isset($arrPids[$strParent]))
+					{
+						$objResult = \CloudNodeModel::findOneByPath($strParent);
+						$arrPids[$strParent] = (isset($objResult->id)) ? $objResult->id : 0;					
+					}
+					
+					$objNode->pid = $arrPids[$strParent];
+					$objNode->found = '1';			
+					$objNode->save();
+					$arrPids[$objNode->path] = $objNode->id;					
+				}
+				
+				// update existing one
+				else 
+				{
+					$objNode = $this->getNode($objEntry);
+					$objNode->setMetaData($arrMetaData, true);
+					$objNode->found = '1';
+					$objNode->save();
+				}
 			}
 			
-			$objNode->save();
+			// dropbox force to reset all nodes so we delete all leftover nodes
+			if($arrDelta['reset'])
+			{
+				//$objStmt = $this->Database->prepare('DELETE FROM tl_cloud_node WHERE found=0 AND cloudapi=?');
+				//$objStmt->execute($this->id);			
+			}
 		}
 		
 		// recursively call delta sync
 		if($arrDelta['has_more'])
 		{
-			return $this->execSync($arrDelta['cursor']);
+			return $this->execSync($arrDelta['cursor'], $arrMounted, $arrPids);
 		}
 		
 		return $arrDelta['cursor'];		
