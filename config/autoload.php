@@ -29,6 +29,6 @@ ClassLoader::addClasses(array
 (
 	// Classes
 	'Netzmacht\Cloud\Dropbox\DropboxApi'  => 'system/modules/cloud-dropbox/classes/DropboxApi.php',
-	'Netzmacht\Cloud\Dropbox\DropboxNode' => 'system/modules/cloud-dropbox/classes/DropboxNode.php',
+	'Netzmacht\Cloud\Dropbox\DropboxNodeModel' => 'system/modules/cloud-dropbox/models/DropboxNodeModel.php',
 
 ));

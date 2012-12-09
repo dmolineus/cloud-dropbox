@@ -103,6 +103,10 @@ class DropboxApi extends Api\CloudApi
 	{
 		switch($strKey)
 		{
+			case 'modelClass':
+				return 'Netzmacht\Cloud\Dropbox\DropboxNodeModel';
+				break;
+				
 			case 'name':
 				return static::DROPBOX;
 				break;
@@ -195,58 +199,6 @@ class DropboxApi extends Api\CloudApi
 		return $this->objConnection;
 	}
 	
-
-	/**
-	 * get dropbox node (file or folder)
-	 * 
-	 * @param mixed path, database result or metadata array
-	 * @return void
-	 */
-	public function getNode($mixedData)
-	{
-		
-		// support multiple ways getting a node
-		switch (gettype($mixedData)) 
-		{
-			case 'string':
-				$strPath = $mixedData;
-				$mixedData = null;
-				break;
-			
-			case 'integer':
-			
-				$objResult = \CloudNodeModel::findOneById($mixedData);
-				$strPath = $objResult === null ? '' : $objResult->path;				
-				$mixedData = $objResult;
-				break;
-				
-			case 'array':
-				$strPath = $mixedData['path'];
-				break;
-				
-			case 'object':
-				$strPath = $mixedData->path;
-				break;
-				
-			default:
-				throw new \Exception('Invalid getNode call. Could not fetch file path');
-				break;
-		}
-
-		
-		// make sure that key is not empty
-		if($strPath == '') 
-		{
-			$strPath = $this->getRoot();
-		}				
-		
-		if(!isset($this->arrNodes[$strPath])) {									
-			$this->arrNodes[$strPath] = new DropboxNode($strPath, $this, $mixedData);						
-		}
-		
-		return $this->arrNodes[$strPath];		
-	}
-	
 	
 	/**
 	 * get root path
@@ -263,39 +215,20 @@ class DropboxApi extends Api\CloudApi
 	 * check if a node exists
 	 */
 	public function nodeExists($strPath)
-	{	
-		$objNode = $this->getNode($strPath);
-		return $objNode->exists;
-	}
-	
-	
-	/**
-	 * search for nodes
-	 * 
-	 * @return array
-	 * @param string search query
-	 * param string starting point
-	 * TODO: search in database
-	 */
-	public function searchNodes($strQuery, $strPath='')
 	{
-		$this->authenticate();
-		$arrResult = $this->objConnection->search($strQuery, null, $strPath);
-		
-		if(empty($arrResult)) 
+		if(isset($this->arrNodes[$strPath]))
 		{
-			return array();
+			return $this->arrNodes[$strPath]->exists;
 		}
 		
-		$arrNodes = array();
+		$objModel = \CloudNodeModel::findOnyByPath($strPath);
 		
-		foreach ($arrResult as $arrChild) 
+		if($objModel === null)
 		{
-			$objNode = $this->getNode($arrChild['path'], $arrChild);
-			$arrNodes[$objNode->path] = $objNode;
+			return false;
 		}
 		
-		return $arrNodes;		
+		return $objModel->exists;
 	}
 
 
@@ -370,6 +303,7 @@ class DropboxApi extends Api\CloudApi
 			// create all path nodes if they do not exists
 			// we have to store them in an array to start with last node			
 			$arrParents = array();
+			
 			for($strWalkPath = dirname($strPath); !in_array($strWalkPath, array('.', '/', '\\', '')); $strWalkPath = dirname($strWalkPath))
 			{
 				if(isset($arrPids[$strWalkPath]))
@@ -389,12 +323,12 @@ class DropboxApi extends Api\CloudApi
 			
 			for($i = count($arrParents) - 1; $i >= 0; $i--)
 			{
-				$objNode = $this->getNode($arrParents[$i]);
+				$objNode = \CloudNodeModel::findOnyByPath($arrParents[$i]);
 				$strParent = dirname($objNode->path);
 				
 				if(!isset($arrPids[$strParent]))
 				{
-					$objResult = \CloudNodeModel::findByPath($strParent);
+					$objResult = \CloudNodeModel::findOneByPath($strParent);
 					$arrPids[$strParent] = (isset($objResult->id)) ? $objResult->id : 0;					
 				}
 				
@@ -412,7 +346,8 @@ class DropboxApi extends Api\CloudApi
 				// create new node
 				if($objEntry === null)
 				{
-					$objNode = $this->getNode($arrMetaData);
+					$objNode = new \CloudNodeModel();
+					$objNode->setMetaData($arrMetaData, true);
 					$strParent = dirname($objNode->path);
 					
 					if(!isset($arrPids[$strParent]))
@@ -430,18 +365,17 @@ class DropboxApi extends Api\CloudApi
 				// update existing one
 				else 
 				{
-					$objNode = $this->getNode($objEntry);
-					$objNode->setMetaData($arrMetaData, true);
-					$objNode->found = '1';
-					$objNode->save();
+					$objEntry->setMetaData($arrMetaData, true);
+					$objEntry->found = '1';
+					$objEntry->save();
 				}
 			}
 			
 			// dropbox force to reset all nodes so we delete all leftover nodes
 			if($arrDelta['reset'])
 			{
-				//$objStmt = $this->Database->prepare('DELETE FROM tl_cloud_node WHERE found=0 AND cloudapi=?');
-				//$objStmt->execute($this->id);			
+				$objStmt = $this->Database->prepare('DELETE FROM tl_cloud_node WHERE found=0 AND cloudapi=?');
+				$objStmt->execute($this->id);			
 			}
 		}
 		
