@@ -272,17 +272,22 @@ class DropboxApi extends Api\CloudApi
 			$strPath = strtolower($varValue[0]);
 			$arrMetaData = $varValue[1];
 			$blnMounted = false;
-			
+
 			// only include mounted files
 			if(is_array($arrMounted))
 			{
 				foreach($arrMounted as $strFolder)
 				{
-					if(strncasecmp($strPath, $strFolder, strlen($strFolder)) !== 0)
+					if(strncasecmp($strPath, $strFolder, strlen($strFolder)) === 0)
 					{
 						$blnMounted = true;
-						continue 2;
+						break;
 					}
+				}
+				
+				if(!$blnMounted)
+				{
+					continue;
 				}
 			}
 			
@@ -334,7 +339,7 @@ class DropboxApi extends Api\CloudApi
 				$objNode->save();				
 				$arrPids[$objNode->path] = $objNode->id;
 				
-				$this->syncLog($GLOBALS['TL_LANG']['tl_cloud_api']['syncFolderC'], $strPath);
+				$this->syncLog($GLOBALS['TL_LANG']['tl_cloud_api']['syncFolderC'], $strPath, 'new');
 			}
 			
 			if(!isset($arrPids[$strPath]))
