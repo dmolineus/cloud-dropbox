@@ -64,14 +64,9 @@ class DropboxNodeModel extends \CloudNodeModel
 	{
 		parent::__construct($objResult, $strPath, $objApi);
 		
-		if($objResult === null)
+		if($objResult === null && $strPath === null)
 		{
-			$this->path = $strPath;
-			
-			if($strPath !== '/')
-			{
-				$this->getMetaData();	
-			}
+			$this->blnNewNode = true;
 		}
 	}
 
@@ -115,16 +110,21 @@ class DropboxNodeModel extends \CloudNodeModel
 				// check if download url has expired
 				if(time() > $this->downloadUrlExpires)
 				{
+					static::$objApi->authenticate();
 					$arrMedia = static::$objApi->getConnection()->media($this->path);
 					$this->downloadUrlExpires = static::$objApi->parseDropboxDate($arrMedia['expires']);
 					$this->downloadUrl = $arrMedia['url'];
-					$this->arrCache[$strKey] = $this->downloadUrl;
+					$this->arrCache[$strKey] = $arrMedia['url'];
 					
 					// force saving because we have changed the data
-					$this->blnForceSave = true;					
+					$this->blnForceSave = true;
+					return $this->$arrMedia['url'];				
+				}
+				else
+				{
+					return $this->arrData[$strKey];
 				}
 				
-				return $this->$strKey;
 				break;
 				
 			default:
@@ -188,23 +188,6 @@ class DropboxNodeModel extends \CloudNodeModel
 		$this->cachedFileVersion = $this->version;
 		
 		return $strContent;
-	}
-	
-	
-	/**
-	 * get children nodes
-	 * 
-	 * @return array
-	 */
-	public function getChildren()
-	{
-		if($this->objChildren instanceof \Netzmacht\Cloud\Api\CloudNodeModelCollection) 
-		{
-			return $this->objChildren;
-		}
-		
-		$this->objChildren = static::findByPid($this->id === null ? 0 : $this->id);
-		return $this->objChildren;
 	}
 	
 	
@@ -286,7 +269,7 @@ class DropboxNodeModel extends \CloudNodeModel
 		$this->tstamp = time();
 		$this->path = strtolower($this->path);
 		
-		parent::save();
+		parent::save($blnForceInsert);
 	}
 	
 	
@@ -347,17 +330,29 @@ class DropboxNodeModel extends \CloudNodeModel
 					
 					$this->version = $mxdValue;
 					break;
+					
+				case 'revision':
+				case 'client_mtime':
+				case 'mime_type':
+				case 'root':
+				case 'icon':
+				case 'size':
+					// prevent from storing those values
+					break;
 						
 				case 'thumb_exists':
 					$this->hasThumbnail = $mxdValue;
 					break;
-									
+					
+				case 'id':
+					
 				default:
 					$this->{$strKey} = $mxdValue;
 					break;
 			}
 		}
 
+		$this->blnNewNode = false;
 		$this->blnMetaDataLoaded = true;
 	}
 
@@ -401,11 +396,15 @@ class DropboxNodeModel extends \CloudNodeModel
 		}
 		
 		// store model informations
-		$this->hash = $arrMetaData['hash'];
 		$this->hasThumbnail = $arrMetaData['thumb_exists'];
 		$this->path = $arrMetaData['path'];
-		$this->type =  $arrMetaData['is_dir'] ? 'folder' : 'file';
+		$this->type =  isset($arrMetaData['is_dir']) ? 'folder' : 'file';
 		$this->filesize = $arrMetaData['bytes'];
+		
+		if(isset($arrMetaData['hash']))
+		{
+			$this->hash = $arrMetaData['hash'];
+		}
 		
 		if(isset($arrMetaData['rev'])) 
 		{
@@ -418,6 +417,7 @@ class DropboxNodeModel extends \CloudNodeModel
 		}
 		
 		$this->blnMetaDataLoaded = true;
+		$this->blnNewNode = false;
 	}
 	
 }

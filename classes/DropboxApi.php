@@ -45,7 +45,9 @@ class DropboxApi extends Api\CloudApi
 	
 	
 	/**
+	 * store if authenticate was called
 	 * 
+	 * @var bool
 	 */
 	protected $blnAuthenticated = false;
 	
@@ -76,16 +78,9 @@ class DropboxApi extends Api\CloudApi
 		
 		// no custom value set so get default app settings
 		// we have to encrypt/decrypt it because of dropbox guidlines
-		if($this->arrConfig['useCustomApp'] != '1')
-		{
-			$this->arrConfig['appKey'] = base64_decode($GLOBALS['TL_CONFIG']['dropboxAppKey']);
-			$this->arrConfig['appSecret'] = base64_decode($GLOBALS['TL_CONFIG']['dropboxAppSecret']);			
-		}
-		
-		if(!isset($this->arrConfig['dropboxRoot']))
-		{
-			$this->arrConfig['dropboxRoot'] = $GLOBALS['TL_CONFIG']['dropboxRoot'];			
-		}		  
+		$this->arrConfig['appKey'] = (($this->arrConfig['useCustomApp'] != '1' || $this->arrConfig['appKey'] == '') ? base64_decode($GLOBALS['TL_CONFIG']['dropboxAppKey']) : $this->arrConfig['appKey']);
+		$this->arrConfig['appSecret'] = (($this->arrConfig['useCustomApp'] != '1' || $this->arrConfig['appSecret'] == '') ? base64_decode($GLOBALS['TL_CONFIG']['dropboxAppSecret']) : $this->arrConfig['appSecret']);
+		$this->arrConfig['root'] = (($this->arrConfig['useCustomApp'] != '1' || $this->arrConfig['root'] == '') ? $GLOBALS['TL_CONFIG']['dropboxRoot'] : $this->arrConfig['root']);	  
 		
 		$strOauth = $this->arrConfig['oAuthClass'];
 		$strOauthClass = '\Dropbox_OAuth_' . (($strOauth != '') ? $strOauth : 'PHP');		
@@ -155,7 +150,7 @@ class DropboxApi extends Api\CloudApi
 		}
 		
 		$this->objOauth->setToken(unserialize($this->arrConfig['accessToken']));
-		$this->objConnection = new \Dropbox_API($this->objOauth, $this->arrConfig['dropboxRoot']);
+		$this->objConnection = new \Dropbox_API($this->objOauth, $this->arrConfig['root']);
 		$this->blnAuthenticated = true;
 		return true;
 	}
@@ -294,6 +289,7 @@ class DropboxApi extends Api\CloudApi
 			// delete path and all children			
 			if($arrMetaData === null && !$arrDelta['reset'])
 			{
+				$this->syncLog($GLOBALS['TL_LANG']['tl_cloud_api']['syncRemoved'], $strPath, 'error');
 				$objStmt = $this->Database->prepare('DELETE FROM tl_cloud_node WHERE cloudapi=? AND path Like ?');
 				$objStmt->execute($this->id, $strPath);
 				
@@ -319,11 +315,11 @@ class DropboxApi extends Api\CloudApi
 				}
 				
 				$arrParents[] = $strWalkPath;
-			}			
+			}
 			
 			for($i = count($arrParents) - 1; $i >= 0; $i--)
 			{
-				$objNode = \CloudNodeModel::findOnyByPath($arrParents[$i]);
+				$objNode = \CloudNodeModel::findOneByPath($arrParents[$i]);
 				$strParent = dirname($objNode->path);
 				
 				if(!isset($arrPids[$strParent]))
@@ -337,18 +333,20 @@ class DropboxApi extends Api\CloudApi
 				$objNode->found = '1';
 				$objNode->save();				
 				$arrPids[$objNode->path] = $objNode->id;
+				
+				$this->syncLog($GLOBALS['TL_LANG']['tl_cloud_api']['syncFolderC'], $strPath);
 			}
 			
 			if(!isset($arrPids[$strPath]))
 			{
-				$objEntry = \CloudNodeModel::findOneByPath($strPath);
+				$objEntry = \CloudNodeModel::findOneByPath($strPath, false);
+				$blnCreate = false;
 				
 				// create new node
 				if($objEntry === null)
 				{
-					$objNode = new \CloudNodeModel();
-					$objNode->setMetaData($arrMetaData, true);
-					$strParent = dirname($objNode->path);
+					$objEntry = new DropboxNodeModel();
+					$strParent = dirname($strPath);
 					
 					if(!isset($arrPids[$strParent]))
 					{
@@ -356,24 +354,23 @@ class DropboxApi extends Api\CloudApi
 						$arrPids[$strParent] = (isset($objResult->id)) ? $objResult->id : 0;					
 					}
 					
-					$objNode->pid = $arrPids[$strParent];
-					$objNode->found = '1';			
-					$objNode->save();
-					$arrPids[$objNode->path] = $objNode->id;					
+					$objEntry->pid = $arrPids[$strParent];		
+					$blnCreate = true;
 				}
+
+				$objEntry->setMetaData($arrMetaData, true);
+				$objEntry->found = '1';
+				$objEntry->save();
 				
-				// update existing one
-				else 
-				{
-					$objEntry->setMetaData($arrMetaData, true);
-					$objEntry->found = '1';
-					$objEntry->save();
-				}
+				$this->syncLog($GLOBALS['TL_LANG']['tl_cloud_api']['sync' . ucfirst($objEntry->type) . ($blnCreate ? 'C' : 'F')], $strPath, $blnCreate ? 'new' : 'info');
+				
+				$arrPids[$objEntry->path] = $objEntry->id;	
 			}
 			
 			// dropbox force to reset all nodes so we delete all leftover nodes
 			if($arrDelta['reset'])
 			{
+				$this->syncLog($GLOBALS['TL_LANG']['tl_cloud_node']['syncReset']);
 				$objStmt = $this->Database->prepare('DELETE FROM tl_cloud_node WHERE found=0 AND cloudapi=?');
 				$objStmt->execute($this->id);			
 			}
