@@ -339,7 +339,7 @@ class DropboxApi extends Api\CloudApi
 				$objNode->save();				
 				$arrPids[$objNode->path] = $objNode->id;
 				
-				$this->syncLog($GLOBALS['TL_LANG']['tl_cloud_api']['syncFolderC'], $strPath, 'new');
+				$this->syncLog($GLOBALS['TL_LANG']['tl_cloud_api']['syncFolderC'], $arrParents[$i], 'new');
 			}
 			
 			if(!isset($arrPids[$strPath]))
