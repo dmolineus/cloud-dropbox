@@ -253,7 +253,7 @@ class DropboxApi extends Api\CloudApi
 	 * @param string delta sync cursor
 	 * @return string current cursor
 	 */
-	protected function execSync($strCursor, $arrMounted=array(), $arrPids=array())
+	protected function execSync($strCursor, $arrMounted=array(), $arrPids=array(), $blnReset=false)
 	{
 		// use delta sync
 		// returns array with entries, reset, cursor, has_more
@@ -264,7 +264,8 @@ class DropboxApi extends Api\CloudApi
 		if($arrDelta['reset'])
 		{
 			$objStmt = $this->Database->prepare('UPDATE tl_cloud_node SET found="0" WHERE cloudapi=?');
-			$objStmt->execute($this->arrRow['id']);			
+			$objStmt->execute($this->arrRow['id']);
+			$blnReset = true;		
 		}		
 
 		foreach ($arrDelta['entries'] as $varValue) 
@@ -294,9 +295,13 @@ class DropboxApi extends Api\CloudApi
 			// delete path and all children			
 			if($arrMetaData === null && !$arrDelta['reset'])
 			{
-				$this->syncLog($GLOBALS['TL_LANG']['tl_cloud_api']['syncRemoved'], $strPath, 'error');
 				$objStmt = $this->Database->prepare('DELETE FROM tl_cloud_node WHERE cloudapi=? AND path Like ?');
 				$objStmt->execute($this->id, $strPath);
+				
+				if($objStmt->affectedRows > 0)
+				{
+					Api\CloudApiManager::callSyncListener('delete', $strPath, $GLOBALS['TL_LANG']['tl_cloud_api']['syncRemoved'], $this);	
+				}
 				
 				continue;				
 			}
@@ -335,11 +340,11 @@ class DropboxApi extends Api\CloudApi
 				
 				$objNode->pid = $arrPids[$strParent];
 				$objNode->type = 'folder';
-				$objNode->found = '1';
-				$objNode->save();				
-				$arrPids[$objNode->path] = $objNode->id;
-				
-				$this->syncLog($GLOBALS['TL_LANG']['tl_cloud_api']['syncFolderC'], $arrParents[$i], 'new');
+				$objNode->found = '1';								
+				$objNode->save();
+				$arrPids[$objNode->path] = $objNode->id;				
+
+				Api\CloudApiManager::callSyncListener('create', $objNode, $GLOBALS['TL_LANG']['tl_cloud_api']['syncFolderC'], $this);
 			}
 			
 			if(!isset($arrPids[$strPath]))
@@ -367,24 +372,34 @@ class DropboxApi extends Api\CloudApi
 				$objEntry->found = '1';
 				$objEntry->save();
 				
-				$this->syncLog($GLOBALS['TL_LANG']['tl_cloud_api']['sync' . ucfirst($objEntry->type) . ($blnCreate ? 'C' : 'F')], $strPath, $blnCreate ? 'new' : 'info');
+				//$this->syncLog($GLOBALS['TL_LANG']['tl_cloud_api']['sync' . ucfirst($objEntry->type) . ($blnCreate ? 'C' : 'F')], $strPath, $blnCreate ? 'new' : 'info');
+				$strKey = 'sync' . ucfirst($objEntry->type) . ($blnCreate ? 'C' : 'F');
+				Api\CloudApiManager::callSyncListener($blnCreate ? 'create' : 'update', $objEntry, $GLOBALS['TL_LANG']['tl_cloud_api'][$strKey], $this);
 				
 				$arrPids[$objEntry->path] = $objEntry->id;	
-			}
-			
-			// dropbox force to reset all nodes so we delete all leftover nodes
-			if($arrDelta['reset'])
-			{
-				$this->syncLog($GLOBALS['TL_LANG']['tl_cloud_node']['syncReset']);
-				$objStmt = $this->Database->prepare('DELETE FROM tl_cloud_node WHERE found=0 AND cloudapi=?');
-				$objStmt->execute($this->id);			
 			}
 		}
 		
 		// recursively call delta sync
 		if($arrDelta['has_more'])
 		{
-			return $this->execSync($arrDelta['cursor'], $arrMounted, $arrPids);
+			return $this->execSync($arrDelta['cursor'], $arrMounted, $arrPids, $blnReset);
+		}
+		
+		// dropbox force to reset all nodes so we delete all leftover nodes
+		elseif($blnReset)
+		{
+			if($arrDelta['reset'] && !$blnRecall)
+			{
+				//$this->syncLog($GLOBALS['TL_LANG']['tl_cloud_node']['syncReset']);
+				$objStmt = $this->Database->prepare('DELETE FROM tl_cloud_node WHERE found="0" AND cloudapi=?');
+				$objStmt->execute($this->id);
+				
+				if($objStmt->affectedRows > 0) 
+				{
+					Api\CloudApiManager::callSyncListener('reset', $objStmt->affectedRows, $GLOBALS['TL_LANG']['tl_cloud_api']['syncReset'], $this);
+				}
+			}
 		}
 		
 		return $arrDelta['cursor'];		

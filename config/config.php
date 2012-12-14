@@ -16,8 +16,8 @@
 /**
  * register dropbox api. tl config are loaded by cloud-api/config.php
  */
-Netzmacht\Cloud\Api\CloudApiManager::registerApi('dropbox', 'Netzmacht\Cloud\Dropbox\DropboxApi');
-//Netzmacht\Cloud\Api\CloudApiManager::registerApi('standard', 'Netzmacht\Cloud\Dropbox\DropboxApi');
+Netzmacht\Cloud\Api\CloudApiManager::registerApi('dropbox', 'Netzmacht\Cloud\Dropbox\DropboxApi', 'Dropbox');
+//Netzmacht\Cloud\Api\CloudApiManager::registerApi('standard', 'Netzmacht\Cloud\Dropbox\DropboxApi', 'Testumgebung');
 
 
 /**
