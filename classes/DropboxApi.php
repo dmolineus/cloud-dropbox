@@ -300,7 +300,7 @@ class DropboxApi extends Api\CloudApi
 				
 				if($objStmt->affectedRows > 0)
 				{
-					Api\CloudApiManager::callSyncListener('delete', $strPath, $GLOBALS['TL_LANG']['tl_cloud_api']['syncRemoved'], $this);	
+					$this->callSyncListener('delete', $strPath, $GLOBALS['TL_LANG']['tl_cloud_api']['syncRemoved'], $this);	
 				}
 				
 				continue;				
@@ -344,7 +344,7 @@ class DropboxApi extends Api\CloudApi
 				$objNode->save();
 				$arrPids[$objNode->path] = $objNode->id;				
 
-				Api\CloudApiManager::callSyncListener('create', $objNode, $GLOBALS['TL_LANG']['tl_cloud_api']['syncFolderC'], $this);
+				$this->callSyncListener('create', $objNode, $GLOBALS['TL_LANG']['tl_cloud_api']['syncFolderC'], $this);
 			}
 			
 			if(!isset($arrPids[$strPath]))
@@ -374,7 +374,7 @@ class DropboxApi extends Api\CloudApi
 				
 				//$this->syncLog($GLOBALS['TL_LANG']['tl_cloud_api']['sync' . ucfirst($objEntry->type) . ($blnCreate ? 'C' : 'F')], $strPath, $blnCreate ? 'new' : 'info');
 				$strKey = 'sync' . ucfirst($objEntry->type) . ($blnCreate ? 'C' : 'F');
-				Api\CloudApiManager::callSyncListener($blnCreate ? 'create' : 'update', $objEntry, $GLOBALS['TL_LANG']['tl_cloud_api'][$strKey], $this);
+				$this->callSyncListener($blnCreate ? 'create' : 'update', $objEntry, $GLOBALS['TL_LANG']['tl_cloud_api'][$strKey], $this);
 				
 				$arrPids[$objEntry->path] = $objEntry->id;	
 			}
@@ -397,7 +397,7 @@ class DropboxApi extends Api\CloudApi
 				
 				if($objStmt->affectedRows > 0) 
 				{
-					Api\CloudApiManager::callSyncListener('reset', $objStmt->affectedRows, $GLOBALS['TL_LANG']['tl_cloud_api']['syncReset'], $this);
+					$this->callSyncListener('reset', $objStmt->affectedRows, $GLOBALS['TL_LANG']['tl_cloud_api']['syncReset'], $this);
 				}
 			}
 		}

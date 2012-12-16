@@ -175,12 +175,14 @@ class DropboxNodeModel extends \CloudNodeModel
 	public function downloadFile()
 	{
 		// file is cached so not needed to download it again		
-		if(Api\CloudCache::isCached($this->cacheKey)) 
+		if($this->isCached) 
 		{
 			return Api\CloudCache::get($this->cacheKey);
 		}
+		
 		static::$objApi->authenticate();
 		$strContent = static::$objApi->getConnection()->getFile($this->path);
+		
 		Api\CloudCache::cache($this->cacheKey, $strContent);
 		
 		// save cached file version so we can decide if we have to delete it
