@@ -12,7 +12,7 @@
  *  
  **/
 
-namespace Netzmacht\Cloud\Dropbox;
+namespace Netzmacht\Cloud\Dropbox\Model;
 use Netzmacht\Cloud\Api;
 
 /**
