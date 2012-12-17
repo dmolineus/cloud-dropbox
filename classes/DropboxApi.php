@@ -99,7 +99,7 @@ class DropboxApi extends Api\CloudApi
 		switch($strKey)
 		{
 			case 'modelClass':
-				return 'Netzmacht\Cloud\Dropbox\DropboxNodeModel';
+				return 'Netzmacht\Cloud\Dropbox\Model\DropboxNodeModel';
 				break;
 				
 			case 'name':
@@ -300,7 +300,7 @@ class DropboxApi extends Api\CloudApi
 				
 				if($objStmt->affectedRows > 0)
 				{
-					$this->callSyncListener('delete', $strPath, $GLOBALS['TL_LANG']['tl_cloud_api']['syncRemoved'], $this);	
+					$this->callSyncListener('delete', $strPath, $GLOBALS['TL_LANG']['cloudapi']['syncRemoved'], $this);	
 				}
 				
 				continue;				
@@ -344,7 +344,7 @@ class DropboxApi extends Api\CloudApi
 				$objNode->save();
 				$arrPids[$objNode->path] = $objNode->id;				
 
-				$this->callSyncListener('create', $objNode, $GLOBALS['TL_LANG']['tl_cloud_api']['syncFolderC'], $this);
+				$this->callSyncListener('create', $objNode, $GLOBALS['TL_LANG']['cloudapi']['syncFolderC'], $this);
 			}
 			
 			if(!isset($arrPids[$strPath]))
@@ -372,9 +372,9 @@ class DropboxApi extends Api\CloudApi
 				$objEntry->found = '1';
 				$objEntry->save();
 				
-				//$this->syncLog($GLOBALS['TL_LANG']['tl_cloud_api']['sync' . ucfirst($objEntry->type) . ($blnCreate ? 'C' : 'F')], $strPath, $blnCreate ? 'new' : 'info');
+				//$this->syncLog($GLOBALS['TL_LANG']['cloudapi']['sync' . ucfirst($objEntry->type) . ($blnCreate ? 'C' : 'F')], $strPath, $blnCreate ? 'new' : 'info');
 				$strKey = 'sync' . ucfirst($objEntry->type) . ($blnCreate ? 'C' : 'F');
-				$this->callSyncListener($blnCreate ? 'create' : 'update', $objEntry, $GLOBALS['TL_LANG']['tl_cloud_api'][$strKey], $this);
+				$this->callSyncListener($blnCreate ? 'create' : 'update', $objEntry, $GLOBALS['TL_LANG']['cloudapi'][$strKey], $this);
 				
 				$arrPids[$objEntry->path] = $objEntry->id;	
 			}
@@ -397,7 +397,7 @@ class DropboxApi extends Api\CloudApi
 				
 				if($objStmt->affectedRows > 0) 
 				{
-					$this->callSyncListener('reset', $objStmt->affectedRows, $GLOBALS['TL_LANG']['tl_cloud_api']['syncReset'], $this);
+					$this->callSyncListener('reset', $objStmt->affectedRows, $GLOBALS['TL_LANG']['cloudapi']['syncReset'], $this);
 				}
 			}
 		}
