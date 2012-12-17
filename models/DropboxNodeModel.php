@@ -111,19 +111,25 @@ class DropboxNodeModel extends \CloudNodeModel
 				if(time() > $this->downloadUrlExpires)
 				{
 					static::$objApi->authenticate();
-					$arrMedia = static::$objApi->getConnection()->media($this->path);
+					
+					$arrMedia = static::$objApi->getConnection()->media($this->path);	
+					
 					$this->downloadUrlExpires = static::$objApi->parseDropboxDate($arrMedia['expires']);
 					$this->downloadUrl = $arrMedia['url'];
 					$this->arrCache[$strKey] = $arrMedia['url'];
 					
 					// force saving because we have changed the data
 					$this->blnForceSave = true;
-					return $this->$arrMedia['url'];				
+					return $arrMedia['url'];				
 				}
-				else
+				elseif(isset($this->arrData[$strKey]))
 				{
 					return $this->arrData[$strKey];
 				}
+				else
+				{
+					return '';	
+				} 
 				
 				break;
 				
