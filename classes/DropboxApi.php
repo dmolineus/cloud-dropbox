@@ -355,7 +355,7 @@ class DropboxApi extends Api\CloudApi
 				// create new node
 				if($objEntry === null)
 				{
-					$objEntry = new DropboxNodeModel();
+					$objEntry = new Model\DropboxNodeModel();
 					$strParent = dirname($strPath);
 					
 					if(!isset($arrPids[$strParent]))
