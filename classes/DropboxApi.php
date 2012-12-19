@@ -106,6 +106,10 @@ class DropboxApi extends Api\CloudApi
 				return static::DROPBOX;
 				break;
 				
+			case 'accessToken':
+				return $this->arrConfig['accessToken'];
+				break;
+				
 			default:
 				return parent::__get($strKey);
 				break;
