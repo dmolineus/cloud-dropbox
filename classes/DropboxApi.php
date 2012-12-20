@@ -249,6 +249,18 @@ class DropboxApi extends Api\CloudApi
             $arrDate['tm_year'] + 1900
 		);
 	}
+	
+	
+	/**
+	 * reset dropbox sync by removing delta cursor, synctstamp and reset sync in progress 
+	 */
+	public function resetSyncState()
+	{
+		$arrData = array('syncTstamp' => 0, 'deltaCursor' => null, 'syncInProgress' => null);
+		
+		$this->import('Database');
+		$this->Database->prepare('UPDATE tl_cloud_api %s WHERE id=?')->set($arrData)->execute($this->id);
+	}
 
 
 	/**
